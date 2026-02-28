@@ -1,21 +1,20 @@
 package com.thespawnpoint.backend.repository;
 
 import com.thespawnpoint.backend.entity.UserGame;
-import com.thespawnpoint.backend.entity.UserGameId;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
-public interface UserGameRepository extends JpaRepository<UserGame, UserGameId> {
+public interface UserGameRepository extends JpaRepository<UserGame, Long> {
 
-    List<UserGame> findByIdUserId(Long userId);
+    List<UserGame> findByUserId(Long userId);
 
-    List<UserGame> findByIdGameId(Long gameId);
+    Optional<UserGame> findByUserIdAndGameId(Long userId, Long gameId);
 
-    boolean existsByIdUserIdAndIdGameId(Long userId, Long gameId);
+    boolean existsByUserIdAndGameId(Long userId, Long gameId);
 
-    void deleteByIdUserIdAndIdGameId(Long userId, Long gameId);
+    void deleteByUserIdAndGameId(Long userId, Long gameId);
 }
-

@@ -43,7 +43,7 @@ public class GameService {
     }
 
     public List<GameDTO> getUserGames(Long userId) {
-        return userGameRepository.findByIdUserId(userId).stream()
+        return userGameRepository.findByUserId(userId).stream()
                 .map(ug -> toDTO(ug.getGame()))
                 .toList();
     }
@@ -53,23 +53,22 @@ public class GameService {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Game not found"));
 
-        if (userGameRepository.existsByIdUserIdAndIdGameId(user.getId(), gameId)) {
+        if (userGameRepository.existsByUserIdAndGameId(user.getId(), gameId)) {
             throw new ApiException(HttpStatus.CONFLICT, "Game already added");
         }
 
-        UserGame userGame = new UserGame();
-        userGame.setId(new UserGameId(user.getId(), gameId));
-        userGame.setUser(user);
-        userGame.setGame(game);
-        userGameRepository.save(userGame);
+        userGameRepository.save(UserGame.builder()
+                .user(user)
+                .game(game)
+                .build());
     }
 
     @Transactional
     public void removeGameFromUser(User user, Long gameId) {
-        if (!userGameRepository.existsByIdUserIdAndIdGameId(user.getId(), gameId)) {
+        if (!userGameRepository.existsByUserIdAndGameId(user.getId(), gameId)) {
             throw new ApiException(HttpStatus.NOT_FOUND, "Game not in your list");
         }
-        userGameRepository.deleteByIdUserIdAndIdGameId(user.getId(), gameId);
+        userGameRepository.deleteByUserIdAndGameId(user.getId(), gameId);
     }
 
 

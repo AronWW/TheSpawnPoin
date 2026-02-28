@@ -168,6 +168,7 @@ public class AuthService {
                 "id", user.getId(),
                 "email", user.getEmail(),
                 "displayName", user.getDisplayName(),
+                "role", user.getRole().name(),
                 "status", user.getStatus().name()
         );
     }
@@ -195,6 +196,7 @@ public class AuthService {
                 "id", user.getId(),
                 "email", user.getEmail(),
                 "displayName", user.getDisplayName(),
+                "role", user.getRole().name(),
                 "status", user.getStatus().name()
         );
     }

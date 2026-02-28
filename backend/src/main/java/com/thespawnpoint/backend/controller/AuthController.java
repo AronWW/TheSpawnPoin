@@ -1,7 +1,9 @@
 package com.thespawnpoint.backend.controller;
 
 import com.thespawnpoint.backend.dto.*;
+import com.thespawnpoint.backend.entity.Profile;
 import com.thespawnpoint.backend.entity.User;
+import com.thespawnpoint.backend.repository.ProfileRepository;
 import com.thespawnpoint.backend.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -11,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
@@ -19,6 +22,7 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final ProfileRepository profileRepository;
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterDTO dto) {
@@ -49,14 +53,21 @@ public class AuthController {
             return ResponseEntity.status(401).body(Map.of("message", "Unauthenticated"));
         }
 
-        return ResponseEntity.ok(Map.of(
-                "id", user.getId(),
-                "email", user.getEmail(),
-                "displayName", user.getDisplayName(),
-                "emailVerified", user.isEmailVerified(),
-                "status", user.getStatus().name(),
-                "lastSeen", user.getLastSeen() != null ? user.getLastSeen().toString() : ""
-        ));
+        String avatarUrl = profileRepository.findByUserId(user.getId())
+                .map(Profile::getAvatarUrl)
+                .orElse(null);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("id", user.getId());
+        body.put("email", user.getEmail());
+        body.put("displayName", user.getDisplayName());
+        body.put("emailVerified", user.isEmailVerified());
+        body.put("role", user.getRole().name());
+        body.put("status", user.getStatus().name());
+        body.put("lastSeen", user.getLastSeen() != null ? user.getLastSeen().toString() : "");
+        body.put("avatarUrl", avatarUrl);
+
+        return ResponseEntity.ok(body);
     }
 
 
