@@ -34,6 +34,11 @@ public class User {
     private boolean emailVerified = false;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private Role role = Role.USER;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
     private Status status = Status.OFFLINE;
@@ -41,6 +46,6 @@ public class User {
     private Instant lastSeen;
 
     @CreationTimestamp
-    @Column(updatable = false)
+    @Column(nullable = false, updatable = false)
     private Instant createdAt;
 }

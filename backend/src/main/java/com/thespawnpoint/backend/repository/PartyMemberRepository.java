@@ -1,17 +1,19 @@
 package com.thespawnpoint.backend.repository;
 
 import com.thespawnpoint.backend.entity.PartyMember;
-import com.thespawnpoint.backend.entity.PartyMemberId;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
-public interface PartyMemberRepository extends JpaRepository<PartyMember, PartyMemberId> {
+public interface PartyMemberRepository extends JpaRepository<PartyMember, Long> {
 
-    List<PartyMember> findByIdPartyRequestId(Long partyRequestId);
+    List<PartyMember> findByPartyRequestId(Long partyRequestId);
 
-    List<PartyMember> findByIdUserId(Long userId);
+    List<PartyMember> findByUserId(Long userId);
+
+    boolean existsByPartyRequestIdAndUserId(Long partyRequestId, Long userId);
+
+    void deleteByPartyRequestIdAndUserId(Long partyRequestId, Long userId);
 }
-

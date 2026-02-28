@@ -39,10 +39,10 @@ public class ChatService {
                     .isGroup(false)
                     .build());
 
-            chatParticipantRepository.save(new ChatParticipant(
-                    new ChatParticipantId(chat.getId(), user1.getId()), chat, user1, null));
-            chatParticipantRepository.save(new ChatParticipant(
-                    new ChatParticipantId(chat.getId(), user2.getId()), chat, user2, null));
+            chatParticipantRepository.save(ChatParticipant.builder()
+                    .chat(chat).user(user1).build());
+            chatParticipantRepository.save(ChatParticipant.builder()
+                    .chat(chat).user(user2).build());
 
             return chat;
         });
@@ -138,7 +138,7 @@ public class ChatService {
     }
 
     private ChatDTO buildChatDTO(Chat chat, User currentUser) {
-        User partner = chatParticipantRepository.findByIdChatId(chat.getId()).stream()
+        User partner = chatParticipantRepository.findByChatId(chat.getId()).stream()
                 .map(ChatParticipant::getUser)
                 .filter(u -> !u.getId().equals(currentUser.getId()))
                 .findFirst()

@@ -9,23 +9,24 @@ import org.hibernate.annotations.OnDeleteAction;
 import java.time.Instant;
 
 @Entity
-@Table(name = "party_members")
+@Table(name = "party_members",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"party_request_id", "user_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class PartyMember {
 
-    @EmbeddedId
-    private PartyMemberId id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @MapsId("partyRequestId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "party_request_id", nullable = false)
     private PartyRequest partyRequest;
 
-    @MapsId("userId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "user_id", nullable = false)
@@ -35,4 +36,3 @@ public class PartyMember {
     @Column(name = "joined_at", nullable = false, updatable = false)
     private Instant joinedAt;
 }
-
