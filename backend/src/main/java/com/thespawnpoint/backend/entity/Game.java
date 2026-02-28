@@ -23,5 +23,12 @@ public class Game {
 
     @Column(name = "release_year")
     private Short releaseYear;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    @Column(name = "max_party_size", nullable = false)
+    @Builder.Default
+    private Integer maxPartySize = 5;
 }
 

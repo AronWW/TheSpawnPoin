@@ -32,7 +32,6 @@ public class ChatService {
         return applicationContext.getBean(ChatService.class);
     }
 
-
     @Transactional
     public Chat getOrCreateDmChat(User user1, User user2) {
         return chatRepository.findDmChat(user1, user2).orElseGet(() -> {
@@ -76,8 +75,8 @@ public class ChatService {
         return dto;
     }
 
-    // Typing індикатор
 
+    // Typing індикатор
     public void sendTypingIndicator(User sender, String recipientEmail) {
         Long chatId = getChatIdIfExists(sender, recipientEmail);
         java.util.HashMap<String, Object> payload = new java.util.HashMap<>();
@@ -108,7 +107,6 @@ public class ChatService {
     }
 
     // Список чатів юзера
-
     @Transactional
     public List<ChatDTO> getUserChats(User currentUser) {
         return chatRepository.findAllByUser(currentUser).stream()
@@ -139,8 +137,6 @@ public class ChatService {
         return messages;
     }
 
-
-    // Helpers
     private ChatDTO buildChatDTO(Chat chat, User currentUser) {
         User partner = chatParticipantRepository.findByIdChatId(chat.getId()).stream()
                 .map(ChatParticipant::getUser)
