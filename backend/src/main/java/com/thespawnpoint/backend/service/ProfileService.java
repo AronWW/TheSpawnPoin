@@ -50,10 +50,6 @@ public class ProfileService {
             "/avatars/default/avatar-10.png"
     );
 
-    // ----------------------------------------------------------------
-    // Get profile
-    // ----------------------------------------------------------------
-
     public ProfileDTO getMyProfile(User user) {
         Profile profile = profileRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Profile not found"));
@@ -65,10 +61,6 @@ public class ProfileService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Profile not found"));
         return toDTO(profile, profile.getUser());
     }
-
-    // ----------------------------------------------------------------
-    // Update profile
-    // ----------------------------------------------------------------
 
     @Transactional
     public ProfileDTO updateMyProfile(User user, UpdateProfileDTO dto) {
@@ -108,10 +100,6 @@ public class ProfileService {
         return toDTO(profile, user);
     }
 
-    // ----------------------------------------------------------------
-    // Avatar upload
-    // ----------------------------------------------------------------
-
     @Transactional
     public ProfileDTO uploadAvatar(User user, MultipartFile file) {
         if (file.isEmpty()) {
@@ -146,10 +134,6 @@ public class ProfileService {
         }
     }
 
-    // ----------------------------------------------------------------
-    // Select default avatar
-    // ----------------------------------------------------------------
-
     @Transactional
     public ProfileDTO selectDefaultAvatar(User user, int index) {
         if (index < 1 || index > DEFAULT_AVATARS.size()) {
@@ -166,17 +150,9 @@ public class ProfileService {
         return toDTO(profile, user);
     }
 
-    // ----------------------------------------------------------------
-    // Default avatars list
-    // ----------------------------------------------------------------
-
     public List<String> getDefaultAvatars() {
         return DEFAULT_AVATARS;
     }
-
-    // ----------------------------------------------------------------
-    // Helpers
-    // ----------------------------------------------------------------
 
     private ProfileDTO toDTO(Profile profile, User user) {
         return ProfileDTO.builder()
@@ -196,11 +172,12 @@ public class ProfileService {
     }
 
     private void validatePlatforms(List<String> platforms) {
-        Set<String> valid = Set.of("PC", "PLAYSTATION", "XBOX", "NINTENDO", "MOBILE");
         for (String p : platforms) {
-            if (!valid.contains(p.toUpperCase())) {
+            try {
+                Platform.valueOf(p.toUpperCase());
+            } catch (IllegalArgumentException e) {
                 throw new ApiException(HttpStatus.BAD_REQUEST,
-                        "Invalid platform: " + p + ". Allowed: " + valid);
+                        "Invalid platform: " + p + ". Allowed: " + java.util.Arrays.toString(Platform.values()));
             }
         }
     }

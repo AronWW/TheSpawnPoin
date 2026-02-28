@@ -5,6 +5,7 @@ public enum Platform {
     PLAYSTATION,
     XBOX,
     NINTENDO,
-    MOBILE
+    MOBILE,
+    OTHER
 }
 

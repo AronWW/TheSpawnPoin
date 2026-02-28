@@ -1,0 +1,39 @@
+package com.thespawnpoint.backend.dto;
+
+import lombok.Builder;
+import lombok.Data;
+
+import java.time.Instant;
+import java.util.List;
+
+@Data
+@Builder
+public class PartyRequestDTO {
+
+    private Long id;
+
+    private Long creatorId;
+    private String creatorDisplayName;
+    private String creatorAvatarUrl;
+
+    private Long gameId;
+    private String gameName;
+    private String gameImageUrl;
+
+    private Integer maxMembers;
+    private Integer currentMembers;
+    private Boolean isOpen;
+
+    private String description;
+    private Instant eventTime;
+
+    private List<String> platform;
+    private String language;
+    private String skillLevel;
+    private String playStyle;
+
+    private List<PartyMemberDTO> members;
+
+    private Instant createdAt;
+}
+
