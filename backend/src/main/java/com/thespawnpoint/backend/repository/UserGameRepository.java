@@ -1,6 +1,6 @@
 package com.thespawnpoint.backend.repository;
 
-import com.thespawnpoint.backend.entity.UserGame;
+import com.thespawnpoint.backend.entity.game.UserGame;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

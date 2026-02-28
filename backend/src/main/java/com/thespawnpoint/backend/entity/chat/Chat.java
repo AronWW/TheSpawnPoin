@@ -1,4 +1,4 @@
-package com.thespawnpoint.backend.entity;
+package com.thespawnpoint.backend.entity.chat;
 
 import jakarta.persistence.*;
 import lombok.*;

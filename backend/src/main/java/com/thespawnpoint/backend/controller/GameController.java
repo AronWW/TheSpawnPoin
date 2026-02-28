@@ -3,7 +3,7 @@ package com.thespawnpoint.backend.controller;
 import com.thespawnpoint.backend.dto.GameDTO;
 import com.thespawnpoint.backend.dto.GameSuggestionDTO;
 import com.thespawnpoint.backend.dto.SuggestGameDTO;
-import com.thespawnpoint.backend.entity.User;
+import com.thespawnpoint.backend.entity.user.User;
 import com.thespawnpoint.backend.service.GameService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

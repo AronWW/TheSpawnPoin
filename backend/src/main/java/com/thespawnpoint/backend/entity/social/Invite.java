@@ -1,5 +1,6 @@
-package com.thespawnpoint.backend.entity;
+package com.thespawnpoint.backend.entity.social;
 
+import com.thespawnpoint.backend.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -11,12 +12,12 @@ import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 
 @Entity
-@Table(name = "notifications")
+@Table(name = "invites")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Notification {
+public class Invite {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,23 +25,25 @@ public class Notification {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "sender_id", nullable = false)
+    private User sender;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "receiver_id", nullable = false)
+    private User receiver;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "type", nullable = false)
-    private NotificationType type;
-
-    @Column(name = "message", nullable = false, columnDefinition = "TEXT")
-    private String message;
-
-    @Column(name = "is_read", nullable = false)
+    @Column(name = "status", nullable = false)
     @Builder.Default
-    private Boolean isRead = false;
+    private InviteStatus status = InviteStatus.PENDING;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @Column(name = "responded_at")
+    private Instant respondedAt;
 }
 

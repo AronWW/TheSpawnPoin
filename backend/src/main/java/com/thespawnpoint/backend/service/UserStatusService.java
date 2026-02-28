@@ -1,6 +1,6 @@
 package com.thespawnpoint.backend.service;
 
-import com.thespawnpoint.backend.entity.User;
+import com.thespawnpoint.backend.entity.user.User;
 import com.thespawnpoint.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

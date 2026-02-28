@@ -1,7 +1,7 @@
 package com.thespawnpoint.backend.service;
 
 import com.thespawnpoint.backend.dto.UserSummaryDTO;
-import com.thespawnpoint.backend.entity.User;
+import com.thespawnpoint.backend.entity.user.User;
 import com.thespawnpoint.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

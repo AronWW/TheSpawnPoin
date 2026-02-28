@@ -1,10 +1,10 @@
 package com.thespawnpoint.backend.service;
 
 import com.thespawnpoint.backend.dto.*;
-import com.thespawnpoint.backend.entity.EmailVerificationToken;
-import com.thespawnpoint.backend.entity.PasswordResetToken;
-import com.thespawnpoint.backend.entity.Profile;
-import com.thespawnpoint.backend.entity.User;
+import com.thespawnpoint.backend.entity.auth.EmailVerificationToken;
+import com.thespawnpoint.backend.entity.auth.PasswordResetToken;
+import com.thespawnpoint.backend.entity.user.Profile;
+import com.thespawnpoint.backend.entity.user.User;
 import com.thespawnpoint.backend.exception.ApiException;
 import com.thespawnpoint.backend.repository.EmailVerificationTokenRepository;
 import com.thespawnpoint.backend.repository.PasswordResetTokenRepository;

@@ -2,7 +2,7 @@ package com.thespawnpoint.backend.controller;
 
 import com.thespawnpoint.backend.dto.ProfileDTO;
 import com.thespawnpoint.backend.dto.UpdateProfileDTO;
-import com.thespawnpoint.backend.entity.User;
+import com.thespawnpoint.backend.entity.user.User;
 import com.thespawnpoint.backend.service.ProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

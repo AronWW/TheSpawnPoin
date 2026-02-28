@@ -1,32 +1,35 @@
-package com.thespawnpoint.backend.entity;
+package com.thespawnpoint.backend.entity.auth;
 
+import com.thespawnpoint.backend.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
 
 @Entity
-@Table(name = "password_reset_tokens")
-@Data
+@Table(name = "email_verification_tokens")
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PasswordResetToken {
+public class EmailVerificationToken {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false, unique = true)
-    private String token;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Column(nullable = false)
+    private String code;
+
+    @Column(nullable = false)
     private Instant expiresAt;
 
-    @Builder.Default
-    private boolean used = false;
+    @Column(nullable = false)
+    private Instant lastSentAt;
 }
+

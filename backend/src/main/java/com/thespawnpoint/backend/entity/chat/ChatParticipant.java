@@ -1,5 +1,6 @@
-package com.thespawnpoint.backend.entity;
+package com.thespawnpoint.backend.entity.chat;
 
+import com.thespawnpoint.backend.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

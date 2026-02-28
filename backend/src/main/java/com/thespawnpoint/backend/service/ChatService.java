@@ -2,7 +2,8 @@ package com.thespawnpoint.backend.service;
 
 import com.thespawnpoint.backend.dto.ChatDTO;
 import com.thespawnpoint.backend.dto.MessageDTO;
-import com.thespawnpoint.backend.entity.*;
+import com.thespawnpoint.backend.entity.chat.*;
+import com.thespawnpoint.backend.entity.user.User;
 import com.thespawnpoint.backend.exception.ApiException;
 import com.thespawnpoint.backend.repository.*;
 import lombok.RequiredArgsConstructor;

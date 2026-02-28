@@ -1,7 +1,7 @@
 package com.thespawnpoint.backend.controller;
 
 import com.thespawnpoint.backend.dto.UserSummaryDTO;
-import com.thespawnpoint.backend.entity.User;
+import com.thespawnpoint.backend.entity.user.User;
 import com.thespawnpoint.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

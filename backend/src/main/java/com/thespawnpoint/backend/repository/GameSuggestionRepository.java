@@ -1,7 +1,7 @@
 package com.thespawnpoint.backend.repository;
 
-import com.thespawnpoint.backend.entity.GameSuggestion;
-import com.thespawnpoint.backend.entity.SuggestionStatus;
+import com.thespawnpoint.backend.entity.game.GameSuggestion;
+import com.thespawnpoint.backend.entity.game.SuggestionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

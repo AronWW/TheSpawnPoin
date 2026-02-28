@@ -1,4 +1,4 @@
-package com.thespawnpoint.backend.entity;
+package com.thespawnpoint.backend.entity.game;
 
 public enum SuggestionStatus {
     PENDING,
