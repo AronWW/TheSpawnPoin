@@ -1,0 +1,45 @@
+package com.thespawnpoint.backend.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
+import java.time.Instant;
+
+@Entity
+@Table(name = "messages", indexes = {
+        @Index(name = "idx_msg_chat", columnList = "chat_id"),
+        @Index(name = "idx_msg_sender", columnList = "sender_id"),
+})
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Message {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "chat_id", nullable = false)
+    private Chat chat;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "sender_id", nullable = false)
+    private User sender;
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String content;
+
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
+    private Instant sentAt;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean read = false;
+}
