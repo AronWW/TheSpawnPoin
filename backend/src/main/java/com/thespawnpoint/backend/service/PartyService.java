@@ -10,6 +10,7 @@ import com.thespawnpoint.backend.entity.user.PlayStyle;
 import com.thespawnpoint.backend.entity.user.Platform;
 import com.thespawnpoint.backend.entity.user.SkillLevel;
 import com.thespawnpoint.backend.entity.user.User;
+import com.thespawnpoint.backend.entity.chat.Chat;
 import com.thespawnpoint.backend.exception.ApiException;
 import com.thespawnpoint.backend.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class PartyService {
     private final PartyMemberRepository partyMemberRepository;
     private final GameRepository gameRepository;
     private final ProfileRepository profileRepository;
+    private final ChatService chatService;
 
     @Transactional
     public PartyRequestDTO createParty(User creator, CreatePartyRequestDTO dto) {
@@ -54,6 +56,12 @@ public class PartyService {
                 .playStyle(playStyle)
                 .build();
 
+        partyRequestRepository.save(party);
+
+        // Create group chat for party
+        String chatTitle = game.getName() + " • " + (dto.getLanguage() != null ? dto.getLanguage() : "International");
+        Chat groupChat = chatService.createGroupChat(chatTitle, creator);
+        party.setChat(groupChat);
         partyRequestRepository.save(party);
 
         PartyMember creatorMember = PartyMember.builder()
@@ -89,6 +97,11 @@ public class PartyService {
                 .build();
         partyMemberRepository.save(member);
 
+        // Add to group chat
+        if (party.getChat() != null) {
+            chatService.addParticipant(party.getChat().getId(), user);
+        }
+
         currentCount++;
         if (currentCount >= party.getMaxMembers()) {
             party.setIsOpen(false);
@@ -111,9 +124,20 @@ public class PartyService {
 
         partyMemberRepository.deleteByPartyRequestIdAndUserId(partyId, user.getId());
 
+        // Remove from group chat
+        if (party.getChat() != null) {
+            chatService.removeParticipant(party.getChat().getId(), user);
+        }
+
         List<PartyMember> remaining = partyMemberRepository.findByPartyRequestIdOrderByJoinedAtAsc(partyId);
 
         if (remaining.isEmpty()) {
+            Long chatId = party.getChat() != null ? party.getChat().getId() : null;
+            party.setChat(null);
+            partyRequestRepository.save(party);
+            if (chatId != null) {
+                chatService.deleteChat(chatId);
+            }
             partyRequestRepository.delete(party);
             return null;
         }
@@ -148,6 +172,14 @@ public class PartyService {
 
         party.setIsOpen(false);
         partyRequestRepository.save(party);
+
+        // Delete group chat on close
+        if (party.getChat() != null) {
+            Long chatId = party.getChat().getId();
+            party.setChat(null);
+            partyRequestRepository.save(party);
+            chatService.deleteChat(chatId);
+        }
 
         List<PartyMember> members = partyMemberRepository.findByPartyRequestId(partyId);
         return toDTO(party, members);
@@ -240,6 +272,7 @@ public class PartyService {
                 .skillLevel(party.getSkillLevel() != null ? party.getSkillLevel().name() : null)
                 .playStyle(party.getPlayStyle() != null ? party.getPlayStyle().name() : null)
                 .members(memberDTOs)
+                .chatId(party.getChat() != null ? party.getChat().getId() : null)
                 .createdAt(party.getCreatedAt())
                 .build();
     }
@@ -267,6 +300,7 @@ public class PartyService {
                 .skillLevel(party.getSkillLevel() != null ? party.getSkillLevel().name() : null)
                 .playStyle(party.getPlayStyle() != null ? party.getPlayStyle().name() : null)
                 .members(null)
+                .chatId(party.getChat() != null ? party.getChat().getId() : null)
                 .createdAt(party.getCreatedAt())
                 .build();
     }

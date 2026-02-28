@@ -34,6 +34,8 @@ public class PartyRequestDTO {
 
     private List<PartyMemberDTO> members;
 
+    private Long chatId;
+
     private Instant createdAt;
 }
 

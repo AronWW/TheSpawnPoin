@@ -29,8 +29,8 @@ public class Message {
     @JoinColumn(name = "chat_id", nullable = false)
     private Chat chat;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "sender_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sender_id")
     private User sender;
 
     @Column(nullable = false, columnDefinition = "TEXT")
@@ -43,5 +43,9 @@ public class Message {
     @Column(nullable = false)
     @Builder.Default
     private boolean read = false;
+
+    @Column(name = "is_system", nullable = false)
+    @Builder.Default
+    private boolean system = false;
 }
 

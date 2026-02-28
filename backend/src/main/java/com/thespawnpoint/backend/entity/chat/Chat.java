@@ -25,6 +25,10 @@ public class Chat {
     @Builder.Default
     private Boolean isGroup = false;
 
+    @Column(name = "party_linked", nullable = false)
+    @Builder.Default
+    private Boolean partyLinked = false;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

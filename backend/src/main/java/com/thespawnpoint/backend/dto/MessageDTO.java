@@ -12,7 +12,9 @@ public class MessageDTO {
     private Long chatId;
     private String senderEmail;
     private String senderName;
+    private String senderAvatarUrl;
     private String content;
     private Instant sentAt;
     private boolean read;
+    private boolean system;
 }

@@ -127,10 +127,11 @@ CREATE TABLE friendships
 -- ------------------------------------------------------------
 CREATE TABLE chats
 (
-    id         BIGSERIAL PRIMARY KEY,
-    title      VARCHAR(100),
-    is_group   BOOLEAN     NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id           BIGSERIAL PRIMARY KEY,
+    title        VARCHAR(100),
+    is_group     BOOLEAN     NOT NULL DEFAULT FALSE,
+    party_linked BOOLEAN     NOT NULL DEFAULT FALSE,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- ------------------------------------------------------------
@@ -146,16 +147,17 @@ CREATE TABLE chat_participants
 );
 
 -- ------------------------------------------------------------
--- messages  (belong to a chat)
+-- messages  (belong to a chat; sender_id nullable for system messages)
 -- ------------------------------------------------------------
 CREATE TABLE messages
 (
     id        BIGSERIAL PRIMARY KEY,
     chat_id   BIGINT      NOT NULL REFERENCES chats (id) ON DELETE CASCADE,
-    sender_id BIGINT      NOT NULL REFERENCES users (id),
+    sender_id BIGINT      REFERENCES users (id),
     content   TEXT        NOT NULL,
     sent_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    read      BOOLEAN     NOT NULL DEFAULT FALSE
+    read      BOOLEAN     NOT NULL DEFAULT FALSE,
+    is_system BOOLEAN     NOT NULL DEFAULT FALSE
 );
 
 CREATE INDEX idx_msg_chat   ON messages (chat_id);
@@ -167,13 +169,17 @@ CREATE INDEX idx_msg_sender ON messages (sender_id);
 CREATE TABLE party_requests
 (
     id          BIGSERIAL PRIMARY KEY,
-    creator_id  BIGINT  NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    game_id     BIGINT  NOT NULL REFERENCES games (id) ON DELETE CASCADE,
-    chat_id     BIGINT  UNIQUE REFERENCES chats (id) ON DELETE SET NULL,
-    max_members INTEGER NOT NULL,
-    is_open     BOOLEAN NOT NULL DEFAULT TRUE,
+    creator_id  BIGINT      NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    game_id     BIGINT      NOT NULL REFERENCES games (id) ON DELETE CASCADE,
+    chat_id     BIGINT      UNIQUE REFERENCES chats (id) ON DELETE SET NULL,
+    max_members INTEGER     NOT NULL,
+    is_open     BOOLEAN     NOT NULL DEFAULT TRUE,
     description TEXT,
     event_time  TIMESTAMPTZ,
+    platform    VARCHAR(20)[],
+    language    VARCHAR(50),
+    skill_level VARCHAR(20),
+    play_style  VARCHAR(20),
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
