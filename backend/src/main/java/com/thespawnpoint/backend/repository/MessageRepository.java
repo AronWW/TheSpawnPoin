@@ -1,8 +1,8 @@
 package com.thespawnpoint.backend.repository;
 
-import com.thespawnpoint.backend.entity.Chat;
-import com.thespawnpoint.backend.entity.Message;
-import com.thespawnpoint.backend.entity.User;
+import com.thespawnpoint.backend.entity.chat.Chat;
+import com.thespawnpoint.backend.entity.chat.Message;
+import com.thespawnpoint.backend.entity.user.User;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;

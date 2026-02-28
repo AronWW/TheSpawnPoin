@@ -1,5 +1,6 @@
-package com.thespawnpoint.backend.entity;
+package com.thespawnpoint.backend.entity.party;
 
+import com.thespawnpoint.backend.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -36,3 +37,4 @@ public class PartyMember {
     @Column(name = "joined_at", nullable = false, updatable = false)
     private Instant joinedAt;
 }
+

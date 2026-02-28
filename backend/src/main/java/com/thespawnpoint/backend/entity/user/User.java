@@ -1,4 +1,4 @@
-package com.thespawnpoint.backend.entity;
+package com.thespawnpoint.backend.entity.user;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -49,3 +49,4 @@ public class User {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 }
+

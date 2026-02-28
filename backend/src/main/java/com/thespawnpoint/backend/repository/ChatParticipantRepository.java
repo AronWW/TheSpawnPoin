@@ -1,6 +1,6 @@
 package com.thespawnpoint.backend.repository;
 
-import com.thespawnpoint.backend.entity.ChatParticipant;
+import com.thespawnpoint.backend.entity.chat.ChatParticipant;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

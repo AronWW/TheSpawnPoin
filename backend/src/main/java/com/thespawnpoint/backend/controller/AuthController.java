@@ -1,8 +1,8 @@
 package com.thespawnpoint.backend.controller;
 
 import com.thespawnpoint.backend.dto.*;
-import com.thespawnpoint.backend.entity.Profile;
-import com.thespawnpoint.backend.entity.User;
+import com.thespawnpoint.backend.entity.user.Profile;
+import com.thespawnpoint.backend.entity.user.User;
 import com.thespawnpoint.backend.repository.ProfileRepository;
 import com.thespawnpoint.backend.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;

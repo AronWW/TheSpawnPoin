@@ -4,7 +4,7 @@ import com.thespawnpoint.backend.dto.ChatDTO;
 import com.thespawnpoint.backend.dto.MessageDTO;
 import com.thespawnpoint.backend.dto.SendMessageDTO;
 import com.thespawnpoint.backend.dto.TypingDTO;
-import com.thespawnpoint.backend.entity.User;
+import com.thespawnpoint.backend.entity.user.User;
 import com.thespawnpoint.backend.exception.ApiException;
 import com.thespawnpoint.backend.exception.WebSocketExceptionHandler;
 import com.thespawnpoint.backend.repository.UserRepository;

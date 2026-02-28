@@ -1,6 +1,6 @@
 package com.thespawnpoint.backend.repository;
 
-import com.thespawnpoint.backend.entity.PartyMember;
+import com.thespawnpoint.backend.entity.party.PartyMember;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -2,7 +2,7 @@ package com.thespawnpoint.backend.service;
 
 import com.thespawnpoint.backend.dto.ProfileDTO;
 import com.thespawnpoint.backend.dto.UpdateProfileDTO;
-import com.thespawnpoint.backend.entity.*;
+import com.thespawnpoint.backend.entity.user.*;
 import com.thespawnpoint.backend.exception.ApiException;
 import com.thespawnpoint.backend.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;

@@ -1,6 +1,6 @@
 package com.thespawnpoint.backend.repository;
 
-import com.thespawnpoint.backend.entity.Friendship;
+import com.thespawnpoint.backend.entity.social.Friendship;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
