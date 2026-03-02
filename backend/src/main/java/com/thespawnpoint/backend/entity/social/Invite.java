@@ -1,5 +1,6 @@
 package com.thespawnpoint.backend.entity.social;
 
+import com.thespawnpoint.backend.entity.party.PartyRequest;
 import com.thespawnpoint.backend.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -50,5 +51,10 @@ public class Invite {
 
     @Column(name = "responded_at")
     private Instant respondedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "party_request_id")
+    private PartyRequest partyRequest;
 }
 

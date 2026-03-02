@@ -7,12 +7,14 @@ import com.thespawnpoint.backend.entity.user.User;
 import com.thespawnpoint.backend.exception.ApiException;
 import com.thespawnpoint.backend.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -23,10 +25,16 @@ public class NotificationService {
 
     @Transactional
     public void send(User recipient, NotificationType type, String message) {
+        send(recipient, type, message, null);
+    }
+
+    @Transactional
+    public void send(User recipient, NotificationType type, String message, Long referenceId) {
         Notification notification = notificationRepository.save(Notification.builder()
                 .user(recipient)
                 .type(type)
                 .message(message)
+                .referenceId(referenceId)
                 .build());
 
         NotificationDTO dto = toDTO(notification);
@@ -36,12 +44,14 @@ public class NotificationService {
                 "/queue/notifications",
                 dto
         );
+
+        broadcastUnreadCount(recipient);
     }
 
-    public List<NotificationDTO> getUserNotifications(User user) {
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).stream()
-                .map(this::toDTO)
-                .toList();
+    public Page<NotificationDTO> getUserNotifications(User user, int page, int size) {
+        return notificationRepository
+                .findByUserIdOrderByCreatedAtDesc(user.getId(), PageRequest.of(page, size))
+                .map(this::toDTO);
     }
 
     public int getUnreadCount(User user) {
@@ -50,6 +60,32 @@ public class NotificationService {
 
     @Transactional
     public void markAsRead(User user, Long notificationId) {
+        Notification notification = getOwnedNotification(user, notificationId);
+        notification.setIsRead(true);
+        notificationRepository.save(notification);
+        broadcastUnreadCount(user);
+    }
+
+    @Transactional
+    public void markAllAsRead(User user) {
+        notificationRepository.markAllAsRead(user.getId());
+        broadcastUnreadCount(user);
+    }
+
+    @Transactional
+    public void deleteNotification(User user, Long notificationId) {
+        Notification notification = getOwnedNotification(user, notificationId);
+        notificationRepository.delete(notification);
+        broadcastUnreadCount(user);
+    }
+
+    @Transactional
+    public void deleteAllNotifications(User user) {
+        notificationRepository.deleteAllByUserId(user.getId());
+        broadcastUnreadCount(user);
+    }
+
+    private Notification getOwnedNotification(User user, Long notificationId) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Notification not found"));
 
@@ -57,13 +93,16 @@ public class NotificationService {
             throw new ApiException(HttpStatus.FORBIDDEN, "Not your notification");
         }
 
-        notification.setIsRead(true);
-        notificationRepository.save(notification);
+        return notification;
     }
 
-    @Transactional
-    public void markAllAsRead(User user) {
-        notificationRepository.markAllAsRead(user.getId());
+    private void broadcastUnreadCount(User user) {
+        int count = notificationRepository.countByUserIdAndIsRead(user.getId(), false);
+        messagingTemplate.convertAndSendToUser(
+                user.getEmail(),
+                "/queue/notifications/unread-count",
+                Map.of("count", count)
+        );
     }
 
     private NotificationDTO toDTO(Notification n) {
@@ -71,6 +110,7 @@ public class NotificationService {
                 .id(n.getId())
                 .type(n.getType().name())
                 .message(n.getMessage())
+                .referenceId(n.getReferenceId())
                 .read(n.getIsRead())
                 .createdAt(n.getCreatedAt())
                 .build();

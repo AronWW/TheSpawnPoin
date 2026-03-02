@@ -43,7 +43,7 @@ public class FriendService {
             throw new ApiException(HttpStatus.CONFLICT, "Friend request already pending");
         }
 
-        inviteRepository.save(Invite.builder()
+        Invite saved = inviteRepository.save(Invite.builder()
                 .sender(sender)
                 .receiver(receiver)
                 .type(InviteType.FRIEND_REQUEST)
@@ -53,7 +53,8 @@ public class FriendService {
         notificationService.send(
                 receiver,
                 NotificationType.FRIEND_REQUEST,
-                sender.getDisplayName() + " sent you a friend request"
+                sender.getDisplayName() + " sent you a friend request",
+                saved.getId()
         );
     }
 
@@ -78,7 +79,8 @@ public class FriendService {
         notificationService.send(
                 invite.getSender(),
                 NotificationType.FRIEND_REQUEST,
-                currentUser.getDisplayName() + " accepted your friend request"
+                currentUser.getDisplayName() + " accepted your friend request",
+                invite.getId()
         );
     }
 

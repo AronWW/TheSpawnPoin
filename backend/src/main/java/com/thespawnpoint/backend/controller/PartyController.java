@@ -1,8 +1,10 @@
 package com.thespawnpoint.backend.controller;
 
 import com.thespawnpoint.backend.dto.CreatePartyRequestDTO;
+import com.thespawnpoint.backend.dto.PartyInviteDTO;
 import com.thespawnpoint.backend.dto.PartyRequestDTO;
 import com.thespawnpoint.backend.entity.user.User;
+import com.thespawnpoint.backend.service.PartyInviteService;
 import com.thespawnpoint.backend.service.PartyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ import java.util.Map;
 public class PartyController {
 
     private final PartyService partyService;
+    private final PartyInviteService partyInviteService;
 
     @PostMapping
     public ResponseEntity<PartyRequestDTO> createParty(
@@ -71,6 +74,56 @@ public class PartyController {
     public ResponseEntity<List<PartyRequestDTO>> getMyParties(
             @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(partyService.getMyParties(user));
+    }
+
+    @PostMapping("/{partyId}/invite/{userId}")
+    public ResponseEntity<PartyInviteDTO> sendPartyInvite(
+            @PathVariable Long partyId,
+            @PathVariable Long userId,
+            @AuthenticationPrincipal User sender) {
+        return ResponseEntity.ok(partyInviteService.sendPartyInvite(sender, partyId, userId));
+    }
+
+    @PostMapping("/invites/{inviteId}/accept")
+    public ResponseEntity<Void> acceptPartyInvite(
+            @PathVariable Long inviteId,
+            @AuthenticationPrincipal User user) {
+        partyInviteService.acceptPartyInvite(user, inviteId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/invites/{inviteId}/decline")
+    public ResponseEntity<Void> declinePartyInvite(
+            @PathVariable Long inviteId,
+            @AuthenticationPrincipal User user) {
+        partyInviteService.declinePartyInvite(user, inviteId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/invites/{inviteId}")
+    public ResponseEntity<Void> cancelPartyInvite(
+            @PathVariable Long inviteId,
+            @AuthenticationPrincipal User sender) {
+        partyInviteService.cancelPartyInvite(sender, inviteId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/invites/incoming")
+    public ResponseEntity<List<PartyInviteDTO>> getIncomingPartyInvites(
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(partyInviteService.getIncomingPartyInvites(user));
+    }
+
+    @GetMapping("/invites/outgoing")
+    public ResponseEntity<List<PartyInviteDTO>> getOutgoingPartyInvites(
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(partyInviteService.getOutgoingPartyInvites(user));
+    }
+
+    @GetMapping("/{partyId}/invites")
+    public ResponseEntity<List<PartyInviteDTO>> getPartyInvites(
+            @PathVariable Long partyId) {
+        return ResponseEntity.ok(partyInviteService.getPartyInvites(partyId));
     }
 }
 

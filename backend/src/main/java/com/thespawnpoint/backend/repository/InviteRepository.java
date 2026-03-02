@@ -37,5 +37,29 @@ public interface InviteRepository extends JpaRepository<Invite, Long> {
             @Param("userId2") Long userId2,
             @Param("type") InviteType type,
             @Param("status") InviteStatus status);
+
+    @Query("""
+            SELECT i FROM Invite i
+            WHERE i.type = 'PARTY_INVITE' AND i.status = 'PENDING'
+              AND i.sender.id = :senderId AND i.receiver.id = :receiverId
+              AND i.partyRequest.id = :partyId
+            """)
+    Optional<Invite> findPendingPartyInvite(
+            @Param("senderId") Long senderId,
+            @Param("receiverId") Long receiverId,
+            @Param("partyId") Long partyId);
+
+    @Query("""
+            SELECT i FROM Invite i
+            WHERE i.type = 'PARTY_INVITE' AND i.status = 'PENDING'
+              AND i.receiver.id = :receiverId
+              AND i.partyRequest.id = :partyId
+            """)
+    Optional<Invite> findAnyPendingPartyInviteForUser(
+            @Param("receiverId") Long receiverId,
+            @Param("partyId") Long partyId);
+
+    List<Invite> findByPartyRequestIdAndTypeAndStatus(
+            Long partyRequestId, InviteType type, InviteStatus status);
 }
 
