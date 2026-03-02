@@ -32,14 +32,10 @@ public class ChatController extends WebSocketExceptionHandler {
     private final ChatService chatService;
     private final UserRepository userRepository;
 
-    // ======================== CHAT LIST ========================
-
     @GetMapping("/api/chats")
     public ResponseEntity<List<ChatDTO>> getChats(@AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(chatService.getUserChats(currentUser));
     }
-
-    // ======================== DM ========================
 
     @GetMapping("/api/chats/{partnerEmail}/messages")
     public ResponseEntity<List<MessageDTO>> history(
@@ -81,8 +77,6 @@ public class ChatController extends WebSocketExceptionHandler {
         if (senderEmail == null) return;
         chatService.markAsReadAndNotify(getPrincipalUser(principal), senderEmail);
     }
-
-    // ======================== GROUP CHAT ========================
 
     @PostMapping("/api/chats/group")
     public ResponseEntity<ChatDTO> createGroupChat(
@@ -153,8 +147,6 @@ public class ChatController extends WebSocketExceptionHandler {
         Long chatId = ((Number) payload.get("chatId")).longValue();
         chatService.markGroupAsRead(getPrincipalUser(principal), chatId);
     }
-
-    // ======================== HELPER ========================
 
     private User getPrincipalUser(Principal principal) {
         if (principal == null) {

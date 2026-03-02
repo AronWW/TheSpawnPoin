@@ -34,6 +34,11 @@ public class Invite {
     private User receiver;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false, length = 20)
+    @Builder.Default
+    private InviteType type = InviteType.FRIEND_REQUEST;
+
+    @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false)
     @Builder.Default

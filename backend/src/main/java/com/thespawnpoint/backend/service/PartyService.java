@@ -58,7 +58,6 @@ public class PartyService {
 
         partyRequestRepository.save(party);
 
-        // Create group chat for party
         String chatTitle = game.getName() + " • " + (dto.getLanguage() != null ? dto.getLanguage() : "International");
         Chat groupChat = chatService.createGroupChat(chatTitle, creator);
         party.setChat(groupChat);
@@ -97,7 +96,6 @@ public class PartyService {
                 .build();
         partyMemberRepository.save(member);
 
-        // Add to group chat
         if (party.getChat() != null) {
             chatService.addParticipant(party.getChat().getId(), user);
         }
@@ -124,7 +122,6 @@ public class PartyService {
 
         partyMemberRepository.deleteByPartyRequestIdAndUserId(partyId, user.getId());
 
-        // Remove from group chat
         if (party.getChat() != null) {
             chatService.removeParticipant(party.getChat().getId(), user);
         }
@@ -173,7 +170,6 @@ public class PartyService {
         party.setIsOpen(false);
         partyRequestRepository.save(party);
 
-        // Delete group chat on close
         if (party.getChat() != null) {
             Long chatId = party.getChat().getId();
             party.setChat(null);
