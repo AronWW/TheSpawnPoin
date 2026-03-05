@@ -9,6 +9,7 @@ public class UserSummaryDTO {
     private Long id;
     private String email;
     private String displayName;
+    private String avatarUrl;
     private String status;
     private String lastSeen;
     private String lastMessage;

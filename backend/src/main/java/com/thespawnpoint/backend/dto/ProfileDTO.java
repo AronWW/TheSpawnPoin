@@ -10,6 +10,7 @@ import java.util.List;
 @Builder
 public class ProfileDTO {
     private Long userId;
+    private String email;
     private String displayName;
     private String fullName;
     private String avatarUrl;

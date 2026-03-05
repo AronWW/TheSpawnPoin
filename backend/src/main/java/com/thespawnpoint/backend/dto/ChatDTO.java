@@ -1,5 +1,6 @@
 package com.thespawnpoint.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
 
@@ -10,8 +11,15 @@ import java.util.List;
 @Builder
 public class ChatDTO {
     private Long id;
-    private boolean isGroup;
-    private boolean partyLinked;
+
+    @JsonProperty("isGroup")
+    @Builder.Default
+    private Boolean group = false;
+
+    @JsonProperty("isPartyLinked")
+    @Builder.Default
+    private Boolean partyLinkedFlag = false;
+
     private String title;
     private Long partyId;
 
@@ -29,4 +37,3 @@ public class ChatDTO {
     private Instant lastMessageAt;
     private int unreadCount;
 }
-

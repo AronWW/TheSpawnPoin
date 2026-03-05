@@ -38,8 +38,6 @@ public class ChatService {
         return applicationContext.getBean(ChatService.class);
     }
 
-    // ======================== DM ========================
-
     @Transactional
     public Chat getOrCreateDmChat(User user1, User user2) {
         return chatRepository.findDmChat(user1, user2).orElseGet(() -> {
@@ -131,8 +129,6 @@ public class ChatService {
         return messages;
     }
 
-    // ======================== GROUP CHAT ========================
-
     @Transactional
     public Chat createGroupChat(String title, User creator) {
         return createGroupChat(title, creator, true);
@@ -156,10 +152,8 @@ public class ChatService {
     public ChatDTO createStandaloneGroupChat(User creator, String title, List<String> memberEmails) {
         Chat chat = createGroupChat(title, creator, false);
 
-        // System message: chat created
         sendSystemMessage(chat, creator.getDisplayName() + " created the group");
 
-        // Add members
         for (String email : memberEmails) {
             User member = userRepository.findByEmail(email)
                     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found: " + email));
@@ -219,7 +213,6 @@ public class ChatService {
         sendSystemMessage(chat, user.getDisplayName() + " left the chat");
         chatParticipantRepository.deleteByChatIdAndUserId(chatId, user.getId());
 
-        // If no participants left, delete the chat
         int remaining = chatParticipantRepository.countByChatId(chatId);
         if (remaining == 0) {
             chatRepository.deleteById(chatId);
@@ -253,13 +246,12 @@ public class ChatService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Chat not found"));
 
         if (chatParticipantRepository.existsByChatIdAndUserId(chatId, user.getId())) {
-            return; // already a participant
+            return;
         }
 
         chatParticipantRepository.save(ChatParticipant.builder()
                 .chat(chat).user(user).build());
 
-        // System message: user joined
         sendSystemMessage(chat, user.getDisplayName() + " joined the party");
     }
 
@@ -269,7 +261,6 @@ public class ChatService {
             return;
         }
 
-        // System message: user left (before removing, so they still get it)
         Chat chat = chatRepository.findById(chatId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Chat not found"));
         sendSystemMessage(chat, user.getDisplayName() + " left the party");
@@ -303,7 +294,6 @@ public class ChatService {
 
         MessageDTO dto = toDTO(saved);
 
-        // Broadcast to all participants
         List<ChatParticipant> participants = chatParticipantRepository.findByChatId(chatId);
         for (ChatParticipant cp : participants) {
             messagingTemplate.convertAndSendToUser(
@@ -343,7 +333,6 @@ public class ChatService {
 
         messageRepository.markAsReadInChat(chat, reader);
 
-        // Notify other participants that this user read the messages
         List<ChatParticipant> participants = chatParticipantRepository.findByChatId(chatId);
         for (ChatParticipant cp : participants) {
             if (!cp.getUser().getId().equals(reader.getId())) {
@@ -373,8 +362,6 @@ public class ChatService {
         }
     }
 
-    // ======================== SYSTEM MESSAGES ========================
-
     private void sendSystemMessage(Chat chat, String content) {
         Message saved = messageRepository.save(Message.builder()
                 .chat(chat)
@@ -391,8 +378,6 @@ public class ChatService {
                     cp.getUser().getEmail(), "/queue/messages", dto);
         }
     }
-
-    // ======================== CHAT LIST ========================
 
     @Transactional
     public List<ChatDTO> getUserChats(User currentUser) {
@@ -429,7 +414,7 @@ public class ChatService {
 
         return ChatDTO.builder()
                 .id(chat.getId())
-                .isGroup(false)
+                .group(false)
                 .partnerEmail(partner.getEmail())
                 .partnerDisplayName(partner.getDisplayName())
                 .partnerStatus(partner.getStatus().name())
@@ -456,15 +441,14 @@ public class ChatService {
                 })
                 .toList();
 
-        // Find partyId linked to this chat
         Long partyId = partyRequestRepository.findByChatId(chat.getId())
                 .map(PartyRequest::getId)
                 .orElse(null);
 
         return ChatDTO.builder()
                 .id(chat.getId())
-                .isGroup(true)
-                .partyLinked(Boolean.TRUE.equals(chat.getPartyLinked()))
+                .group(true)
+                .partyLinkedFlag(Boolean.TRUE.equals(chat.getPartyLinked()))
                 .title(chat.getTitle())
                 .partyId(partyId)
                 .participants(participants)
@@ -473,8 +457,6 @@ public class ChatService {
                 .unreadCount(unread)
                 .build();
     }
-
-    // ======================== HELPERS ========================
 
     private Long getChatIdIfExists(User sender, String recipientEmail) {
         return userRepository.findByEmail(recipientEmail)

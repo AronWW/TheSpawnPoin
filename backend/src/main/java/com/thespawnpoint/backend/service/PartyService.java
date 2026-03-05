@@ -244,7 +244,7 @@ public class PartyService {
                             .userId(m.getUser().getId())
                             .displayName(m.getUser().getDisplayName())
                             .avatarUrl(avatarUrl)
-                            .isCreator(m.getUser().getId().equals(party.getCreator().getId()))
+                            .creator(m.getUser().getId().equals(party.getCreator().getId()))
                             .joinedAt(m.getJoinedAt())
                             .build();
                 })

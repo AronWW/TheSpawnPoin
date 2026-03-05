@@ -157,6 +157,7 @@ public class ProfileService {
     private ProfileDTO toDTO(Profile profile, User user) {
         return ProfileDTO.builder()
                 .userId(user.getId())
+                .email(user.getEmail())
                 .displayName(user.getDisplayName())
                 .fullName(profile.getFullName())
                 .avatarUrl(profile.getAvatarUrl())

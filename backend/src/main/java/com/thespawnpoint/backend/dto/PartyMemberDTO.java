@@ -1,5 +1,6 @@
 package com.thespawnpoint.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
 
@@ -12,7 +13,7 @@ public class PartyMemberDTO {
     private Long userId;
     private String displayName;
     private String avatarUrl;
-    private boolean isCreator;
+    @JsonProperty("isCreator")
+    private Boolean creator;
     private Instant joinedAt;
 }
-

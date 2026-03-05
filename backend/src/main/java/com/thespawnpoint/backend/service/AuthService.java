@@ -304,7 +304,7 @@ public class AuthService {
                 .secure(false)
                 .path("/")
                 .maxAge(Duration.ofMillis(accessTokenExpirationMs))
-                .sameSite("Strict")
+                .sameSite("Lax")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
@@ -315,7 +315,7 @@ public class AuthService {
                 .secure(false)
                 .path("/api/auth/refresh")
                 .maxAge(Duration.ofMillis(refreshMs))
-                .sameSite("Strict")
+                .sameSite("Lax")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }

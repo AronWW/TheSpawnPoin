@@ -183,7 +183,11 @@ public class FriendService {
     }
 
     private FriendRequestDTO toFriendRequestDTO(Invite invite) {
-        String avatarUrl = profileRepository.findByUserId(invite.getSender().getId())
+        String senderAvatarUrl = profileRepository.findByUserId(invite.getSender().getId())
+                .map(p -> p.getAvatarUrl())
+                .orElse(null);
+
+        String receiverAvatarUrl = profileRepository.findByUserId(invite.getReceiver().getId())
                 .map(p -> p.getAvatarUrl())
                 .orElse(null);
 
@@ -192,7 +196,10 @@ public class FriendService {
                 .senderId(invite.getSender().getId())
                 .senderEmail(invite.getSender().getEmail())
                 .senderDisplayName(invite.getSender().getDisplayName())
-                .senderAvatarUrl(avatarUrl)
+                .senderAvatarUrl(senderAvatarUrl)
+                .receiverId(invite.getReceiver().getId())
+                .receiverDisplayName(invite.getReceiver().getDisplayName())
+                .receiverAvatarUrl(receiverAvatarUrl)
                 .createdAt(invite.getCreatedAt())
                 .build();
     }

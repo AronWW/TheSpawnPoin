@@ -13,6 +13,9 @@ public class FriendRequestDTO {
     private String senderEmail;
     private String senderDisplayName;
     private String senderAvatarUrl;
+    private Long receiverId;
+    private String receiverDisplayName;
+    private String receiverAvatarUrl;
     private Instant createdAt;
 }
 
