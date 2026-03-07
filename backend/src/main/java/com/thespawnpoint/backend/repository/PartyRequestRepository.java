@@ -20,6 +20,10 @@ public interface PartyRequestRepository extends JpaRepository<PartyRequest, Long
 
     List<PartyRequest> findByIsOpen(Boolean isOpen);
 
+    long countByIsOpen(Boolean isOpen);
+
+    Page<PartyRequest> findByIsOpenOrderByCreatedAtDesc(Boolean isOpen, Pageable pageable);
+
     boolean existsByCreatorIdAndIsOpen(Long creatorId, Boolean isOpen);
 
     Optional<PartyRequest> findByChatId(Long chatId);

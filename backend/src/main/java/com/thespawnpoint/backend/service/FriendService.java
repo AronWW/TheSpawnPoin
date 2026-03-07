@@ -33,6 +33,10 @@ public class FriendService {
         User receiver = userRepository.findById(receiverId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
 
+        if (receiver.getRole() == com.thespawnpoint.backend.entity.user.Role.ADMIN) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "User not found");
+        }
+
         if (friendshipRepository.areFriends(sender.getId(), receiverId)) {
             throw new ApiException(HttpStatus.CONFLICT, "You are already friends");
         }

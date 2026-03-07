@@ -6,6 +6,8 @@ import type { UserMe } from '../types'
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<UserMe | null>(null)
   const loading = ref(false)
+  const initialized = ref(false)
+  let _initPromise: Promise<void> | null = null
 
   const isLoggedIn = computed(() => user.value !== null)
   const displayName = computed(() => user.value?.displayName ?? '')
@@ -19,7 +21,15 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = null
     } finally {
       loading.value = false
+      initialized.value = true
     }
+  }
+
+  function init() {
+    if (!_initPromise) {
+      _initPromise = fetchMe()
+    }
+    return _initPromise
   }
 
   async function login(email: string, password: string, rememberMe: boolean = false) {
@@ -63,8 +73,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    user, loading, isLoggedIn, displayName,
-    fetchMe, login, register, verifyEmail, resendVerification,
+    user, loading, isLoggedIn, displayName, initialized,
+    fetchMe, init, login, register, verifyEmail, resendVerification,
     forgotPassword, resetPassword, logout,
   }
 })

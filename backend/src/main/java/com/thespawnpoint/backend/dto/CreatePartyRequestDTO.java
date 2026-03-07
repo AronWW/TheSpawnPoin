@@ -23,5 +23,7 @@ public class CreatePartyRequestDTO {
     private String skillLevel;
 
     private String playStyle;
+
+    private Integer maxMembers;
 }
 

@@ -65,6 +65,7 @@ export const usePartyStore = defineStore('parties', () => {
   async function createParty(dto: CreatePartyRequest): Promise<Party> {
     const { data } = await api.post<Party>('/parties', dto)
     parties.value.unshift(data)
+    await fetchMyParties()
     return data
   }
 
@@ -73,6 +74,7 @@ export const usePartyStore = defineStore('parties', () => {
       const { data } = await api.post<Party>(`/parties/${partyId}/join`)
       const idx = parties.value.findIndex((p) => p.id === partyId)
       if (idx !== -1) parties.value[idx] = data
+      await fetchMyParties()
       return data
     } catch (e: any) {
       const msg = e.response?.data?.message || 'Не вдалося приєднатись'
@@ -89,6 +91,7 @@ export const usePartyStore = defineStore('parties', () => {
     try {
       await api.post(`/parties/${partyId}/leave`)
       parties.value = parties.value.filter((p) => p.id !== partyId)
+      await fetchMyParties()
     } catch (e: any) {
       const msg = e.response?.data?.message || 'Не вдалося покинути лобі'
       throw new Error(msg)
@@ -103,6 +106,7 @@ export const usePartyStore = defineStore('parties', () => {
       if (party) {
         party.isOpen = false
       }
+      await fetchMyParties()
     } catch (e: any) {
       const msg = e.response?.data?.message || 'Не вдалося закрити лобі'
       throw new Error(msg)

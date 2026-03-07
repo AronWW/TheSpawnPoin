@@ -6,6 +6,7 @@ import { useNotificationStore } from '../stores/notifications'
 import { useChatStore } from '../stores/chat'
 import { useFriendStore } from '../stores/friends'
 import { usePartyStore } from '../stores/parties'
+import { useGameStore } from '../stores/games'
 import { notificationIcon, timeAgo } from '../utils/helpers'
 import { API_BASE_URL } from '../config'
 
@@ -15,6 +16,9 @@ const notifStore = useNotificationStore()
 const chatStore = useChatStore()
 const friendStore = useFriendStore()
 const partyStore = usePartyStore()
+const gameStore = useGameStore()
+
+const isAdmin = computed(() => auth.user?.role === 'ADMIN')
 
 const notifOpen = ref(false)
 const userMenuOpen = ref(false)
@@ -51,11 +55,12 @@ function handleClickOutside(e: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  if (auth.isLoggedIn) {
+  if (auth.isLoggedIn && !isAdmin.value) {
     notifStore.fetchUnreadCount()
     chatStore.fetchChats()
     friendStore.fetchIncomingRequests()
     partyStore.fetchMyParties()
+    gameStore.fetchMySuggestionsCount()
   }
 })
 onUnmounted(() => {
@@ -94,6 +99,13 @@ function handleNotifClick(n: import('../types').Notification) {
       if (n.referenceId) router.push(`/party/${n.referenceId}`); break
     case 'MESSAGE':
       router.push('/chat'); break
+    case 'GAME_SUGGESTION_APPROVED':
+    case 'GAME_SUGGESTION_REJECTED':
+      router.push('/my-suggestions'); break
+    case 'REPORT_REVIEWED':
+      break
+    case 'SUPPORT_REPLY':
+      router.push('/support'); break
   }
 }
 </script>
@@ -103,140 +115,189 @@ function handleNotifClick(n: import('../types').Notification) {
     <router-link to="/" class="nav-logo">THE<span>SPAWN</span>POINT</router-link>
     <div class="nav-divider"></div>
 
-    <ul class="nav-links">
-      <li><router-link to="/">Головна</router-link></li>
-      <li><router-link to="/games">Ігри</router-link></li>
-      <li><router-link to="/search-parties">Пошук лобі</router-link></li>
-      <li v-if="auth.isLoggedIn">
-        <router-link to="/friends" class="nav-friends-link">
-          Друзі
-          <span v-if="friendStore.pendingCount > 0" class="nav-friends-badge">{{ friendStore.pendingCount }}</span>
-        </router-link>
-      </li>
-      <li>
-        <router-link to="/chat" class="nav-chat-link">
-          Чат
-          <span v-if="auth.isLoggedIn && chatStore.totalUnread > 0" class="nav-chat-badge">{{ chatStore.totalUnread }}</span>
-        </router-link>
-      </li>
-    </ul>
+    <template v-if="auth.isLoggedIn && isAdmin">
+      <ul class="nav-links">
+        <li><router-link to="/">Головна</router-link></li>
+      </ul>
 
-    <div class="nav-right">
-      <div v-if="auth.isLoggedIn" class="notif-wrapper">
-        <button class="notif-btn" @click.stop="toggleNotif" title="Сповіщення">
-          🔔
-          <span v-if="notifStore.hasUnread" class="notif-badge">{{ notifStore.unreadCount }}</span>
+      <div class="nav-right">
+        <router-link to="/admin" class="nav-admin-btn">
+          АДМІН ПАНЕЛЬ
+        </router-link>
+        <button class="nav-logout-btn" @click="handleLogout">
+          Вийти
         </button>
-
-        <div v-if="notifOpen" class="notif-panel">
-          <div class="notif-panel-header">
-            <span>СПОВІЩЕННЯ</span>
-            <button @click="notifStore.markAllRead">Позначити прочитаними</button>
-          </div>
-
-          <div
-              v-for="n in notifStore.notifications"
-              :key="n.id"
-              class="notif-item"
-              :class="{ unread: !n.read }"
-              @click="handleNotifClick(n)"
-          >
-            <div class="notif-icon">{{ notificationIcon(n.type) }}</div>
-            <div>
-              <div class="notif-text">{{ n.message }}</div>
-              <div class="notif-time">{{ timeAgo(n.createdAt) }}</div>
-            </div>
-          </div>
-
-          <div v-if="!notifStore.notifications.length" class="notif-empty">
-            Нових сповіщень немає
-          </div>
-        </div>
       </div>
+    </template>
 
-      <template v-if="!auth.isLoggedIn">
-        <router-link to="/login" class="nav-auth-btn">Увійти</router-link>
-        <router-link to="/register" class="nav-auth-btn filled">Реєстрація</router-link>
-      </template>
+    <template v-else>
+      <ul class="nav-links">
+        <li><router-link to="/">Головна</router-link></li>
+        <li><router-link to="/games">Ігри</router-link></li>
+        <li><router-link to="/search-parties">Пошук лобі</router-link></li>
+        <li v-if="auth.isLoggedIn">
+          <router-link to="/friends" class="nav-friends-link">
+            Друзі
+            <span v-if="friendStore.pendingCount > 0" class="nav-friends-badge">{{ friendStore.pendingCount }}</span>
+          </router-link>
+        </li>
+        <li>
+          <router-link to="/chat" class="nav-chat-link">
+            Чат
+            <span v-if="auth.isLoggedIn && chatStore.totalUnread > 0" class="nav-chat-badge">{{ chatStore.totalUnread }}</span>
+          </router-link>
+        </li>
+      </ul>
 
-      <template v-else>
-        <div class="user-menu-wrapper">
-          <button class="nav-user-btn" @click.stop="toggleUserMenu" :class="{ active: userMenuOpen }">
-            <div class="nav-avatar-wrap">
-              <img :src="avatarSrc" :alt="auth.displayName" class="nav-avatar" />
-              <span class="nav-avatar-online"></span>
-            </div>
-            <div class="nav-user-info">
-              <span class="nav-user-name">{{ auth.displayName }}</span>
-              <span class="nav-user-hint">Мій акаунт</span>
-            </div>
-            <span class="nav-user-chevron" :class="{ open: userMenuOpen }">
-              <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
-                <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/>
-              </svg>
-            </span>
+      <div class="nav-right">
+        <div v-if="auth.isLoggedIn" class="notif-wrapper">
+          <button class="notif-btn" @click.stop="toggleNotif" title="Сповіщення">
+            🔔
+            <span v-if="notifStore.hasUnread" class="notif-badge">{{ notifStore.unreadCount }}</span>
           </button>
 
-          <Transition name="dropdown">
-            <div v-if="userMenuOpen" class="user-dropdown">
-              <div class="dropdown-header">
-                <img :src="avatarSrc" :alt="auth.displayName" class="dropdown-header-avatar" />
-                <div class="dropdown-header-info">
-                  <span class="dropdown-header-name">{{ auth.displayName }}</span>
-                  <span class="dropdown-header-role">{{ auth.user?.role === 'ADMIN' ? '⭐ Адмін' : 'Гравець' }}</span>
-                </div>
-              </div>
+          <div v-if="notifOpen" class="notif-panel">
+            <div class="notif-panel-header">
+              <span>СПОВІЩЕННЯ</span>
+              <button @click="notifStore.markAllRead">Позначити прочитаними</button>
+            </div>
 
-              <div class="dropdown-section">
-                <router-link :to="profileLink" class="dropdown-item" @click="userMenuOpen = false">
-                <span class="di-icon">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-                </span>
-                  <span class="di-text">Мій профіль</span>
-                </router-link>
-
-                <button v-if="partyStore.myParties.length > 0" class="dropdown-item" @click="goToMyParty">
-                <span class="di-icon di-icon--yellow">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                </span>
-                  <span class="di-text">Моє лобі</span>
-                  <span class="di-badge">Live</span>
-                </button>
-
-                <router-link to="/favorite-games" class="dropdown-item" @click="userMenuOpen = false">
-                <span class="di-icon">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                </span>
-                  <span class="di-text">Улюблені ігри</span>
-                </router-link>
-
-                <router-link to="/settings" class="dropdown-item" @click="userMenuOpen = false">
-                <span class="di-icon">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                </span>
-                  <span class="di-text">Налаштування</span>
-                </router-link>
-              </div>
-
-              <div class="dropdown-divider"></div>
-
-              <div class="dropdown-section">
-                <button class="dropdown-item dropdown-item--danger" @click="handleLogout">
-                <span class="di-icon">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                </span>
-                  <span class="di-text">Вийти</span>
-                </button>
+            <div
+                v-for="n in notifStore.notifications"
+                :key="n.id"
+                class="notif-item"
+                :class="{ unread: !n.read }"
+                @click="handleNotifClick(n)"
+            >
+              <div class="notif-icon">{{ notificationIcon(n.type) }}</div>
+              <div>
+                <div class="notif-text">{{ n.message }}</div>
+                <div class="notif-time">{{ timeAgo(n.createdAt) }}</div>
               </div>
             </div>
-          </Transition>
+
+            <div v-if="!notifStore.notifications.length" class="notif-empty">
+              Нових сповіщень немає
+            </div>
+          </div>
         </div>
-      </template>
-    </div>
+
+        <template v-if="!auth.isLoggedIn">
+          <router-link to="/login" class="nav-auth-btn">Увійти</router-link>
+          <router-link to="/register" class="nav-auth-btn filled">Реєстрація</router-link>
+        </template>
+
+        <template v-else>
+          <div class="user-menu-wrapper">
+            <button class="nav-user-btn" @click.stop="toggleUserMenu" :class="{ active: userMenuOpen }">
+              <div class="nav-avatar-wrap">
+                <img :src="avatarSrc" :alt="auth.displayName" class="nav-avatar" />
+                <span class="nav-avatar-online"></span>
+              </div>
+              <div class="nav-user-info">
+                <span class="nav-user-name">{{ auth.displayName }}</span>
+                <span class="nav-user-hint">Мій акаунт</span>
+              </div>
+              <span class="nav-user-chevron" :class="{ open: userMenuOpen }">
+                <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
+                  <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/>
+                </svg>
+              </span>
+            </button>
+
+            <Transition name="dropdown">
+              <div v-if="userMenuOpen" class="user-dropdown">
+                <div class="dropdown-header">
+                  <img :src="avatarSrc" :alt="auth.displayName" class="dropdown-header-avatar" />
+                  <div class="dropdown-header-info">
+                    <span class="dropdown-header-name">{{ auth.displayName }}</span>
+                    <span class="dropdown-header-role">Гравець</span>
+                  </div>
+                </div>
+
+                <div class="dropdown-section">
+                  <router-link :to="profileLink" class="dropdown-item" @click="userMenuOpen = false">
+                  <span class="di-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                  </span>
+                    <span class="di-text">Мій профіль</span>
+                  </router-link>
+
+                  <button v-if="partyStore.myParties.length > 0" class="dropdown-item" @click="goToMyParty">
+                  <span class="di-icon di-icon--yellow">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  </span>
+                    <span class="di-text">Моє лобі</span>
+                    <span class="di-badge">Live</span>
+                  </button>
+
+                  <router-link to="/favorite-games" class="dropdown-item" @click="userMenuOpen = false">
+                  <span class="di-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  </span>
+                    <span class="di-text">Улюблені ігри</span>
+                  </router-link>
+
+                  <router-link v-if="gameStore.mySuggestionsCount > 0" to="/my-suggestions" class="dropdown-item" @click="userMenuOpen = false">
+                  <span class="di-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 12 18.469c-.89 0-1.74.353-2.366.992l-.172.176z"/></svg>
+                  </span>
+                    <span class="di-text">Мої заявки на ігри</span>
+                  </router-link>
+
+                  <router-link to="/settings" class="dropdown-item" @click="userMenuOpen = false">
+                  <span class="di-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  </span>
+                    <span class="di-text">Налаштування</span>
+                  </router-link>
+
+                  <router-link to="/support" class="dropdown-item" @click="userMenuOpen = false">
+                  <span class="di-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  </span>
+                    <span class="di-text">Підтримка</span>
+                  </router-link>
+                </div>
+
+                <div class="dropdown-divider"></div>
+
+                <div class="dropdown-section">
+                  <button class="dropdown-item dropdown-item--danger" @click="handleLogout">
+                  <span class="di-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  </span>
+                    <span class="di-text">Вийти</span>
+                  </button>
+                </div>
+              </div>
+            </Transition>
+          </div>
+        </template>
+      </div>
+    </template>
   </nav>
 </template>
 
 <style scoped>
+.nav-logout-btn {
+  font-family: var(--font-display), sans-serif;
+  letter-spacing: 2px;
+  font-size: 12px;
+  padding: 6px 16px;
+  border: 2px solid var(--red-dim);
+  background: transparent;
+  color: var(--red);
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.nav-logout-btn:hover {
+  background: var(--red);
+  color: var(--white);
+  border-color: var(--red);
+}
+
 .user-menu-wrapper {
   position: relative;
 }

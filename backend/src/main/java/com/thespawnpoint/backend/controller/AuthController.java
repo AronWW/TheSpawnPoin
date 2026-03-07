@@ -66,6 +66,8 @@ public class AuthController {
         body.put("status", user.getStatus().name());
         body.put("lastSeen", user.getLastSeen() != null ? user.getLastSeen().toString() : "");
         body.put("avatarUrl", avatarUrl);
+        body.put("banned", user.isBanned());
+        body.put("banReason", user.getBanReason());
 
         return ResponseEntity.ok(body);
     }

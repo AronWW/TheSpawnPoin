@@ -83,23 +83,5 @@ public class GameController {
             @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(gameService.getMySuggestions(user));
     }
-
-    @GetMapping("/admin/game-suggestions")
-    public ResponseEntity<List<GameSuggestionDTO>> pendingSuggestions() {
-        return ResponseEntity.ok(gameService.getPendingSuggestions());
-    }
-
-    @PostMapping("/admin/game-suggestions/{id}/approve")
-    public ResponseEntity<GameDTO> approve(@PathVariable Long id) {
-        return ResponseEntity.ok(gameService.approveSuggestion(id));
-    }
-
-    @PostMapping("/admin/game-suggestions/{id}/reject")
-    public ResponseEntity<GameSuggestionDTO> reject(
-            @PathVariable Long id,
-            @RequestBody(required = false) Map<String, String> body) {
-        String comment = body != null ? body.get("comment") : null;
-        return ResponseEntity.ok(gameService.rejectSuggestion(id, comment));
-    }
 }
 

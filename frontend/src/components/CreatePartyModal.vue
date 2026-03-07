@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePartyStore } from '../stores/parties'
 import { useGameStore } from '../stores/games'
@@ -28,6 +28,23 @@ const form = ref<CreatePartyRequest>({
 const selectedPlatform = ref('PC')
 const submitting = ref(false)
 const error = ref('')
+
+const selectedGame = computed(() =>
+  form.value.gameId ? gameStore.games.find(g => g.id === form.value.gameId) : null
+)
+
+const gameMaxPartySize = computed(() => selectedGame.value?.maxPartySize ?? 5)
+
+const memberOptions = computed(() => {
+  const max = gameMaxPartySize.value
+  const opts: number[] = []
+  for (let i = 2; i <= max; i++) opts.push(i)
+  return opts
+})
+
+watch(() => form.value.gameId, () => {
+  form.value.maxMembers = gameMaxPartySize.value
+})
 
 async function submit() {
   if (!form.value.gameId) {
@@ -139,10 +156,14 @@ function close() {
           </div>
 
           <div class="form-group">
-            <label class="form-label">Максимум гравців</label>
-            <div class="members-select">
+            <label class="form-label">
+              Максимум гравців
+              <span v-if="selectedGame" class="form-hint">(за замовчуванням: {{ gameMaxPartySize }})</span>
+            </label>
+            <div v-if="!selectedGame" class="members-hint">Спочатку оберіть гру</div>
+            <div v-else class="members-select">
               <button
-                  v-for="n in [2, 3, 4, 5, 6, 8, 10]"
+                  v-for="n in memberOptions"
                   :key="n"
                   type="button"
                   class="members-btn"
@@ -212,5 +233,19 @@ function close() {
   border-color: var(--yellow);
   color: var(--yellow);
   font-weight: 700;
+}
+
+.form-hint {
+  font-size: 0.8rem;
+  color: var(--gray);
+  font-family: var(--font-body);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.members-hint {
+  font-size: 0.85rem;
+  color: var(--gray);
+  padding: 10px 0;
 }
 </style>

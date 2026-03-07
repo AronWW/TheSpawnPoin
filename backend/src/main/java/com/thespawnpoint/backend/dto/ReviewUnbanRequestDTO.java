@@ -1,0 +1,14 @@
+package com.thespawnpoint.backend.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
+
+@Data
+public class ReviewUnbanRequestDTO {
+
+    @NotBlank(message = "Статус обов'язковий")
+    private String status;
+
+    private String adminComment;
+}
+

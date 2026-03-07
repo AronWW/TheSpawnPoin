@@ -23,7 +23,7 @@ defineEmits<{ (e: 'select', p: Party): void }>()
       <p class="party-desc">{{ party.description }}</p>
       <div class="party-slots">
         <div v-for="i in party.maxMembers" :key="i" class="slot" :class="i <= party.currentMembers ? 'filled' : 'empty-slot'">
-          <template v-if="i <= party.currentMembers && party.members && party.members[i-1]">{{ party.members[i-1].displayName?.substring(0,2)?.toUpperCase() }}</template>
+          <template v-if="i <= party.currentMembers && party.members && party.members[i-1]">{{ party.members[i-1]?.displayName?.substring(0,2)?.toUpperCase() }}</template>
         </div>
         <span class="slots-label"><span>{{ party.currentMembers }}</span>/{{ party.maxMembers }} гравців</span>
       </div>

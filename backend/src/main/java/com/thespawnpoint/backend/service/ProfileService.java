@@ -61,6 +61,11 @@ public class ProfileService {
     public ProfileDTO getProfileByUserId(Long userId) {
         Profile profile = profileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Profile not found"));
+
+        if (profile.getUser().getRole() == com.thespawnpoint.backend.entity.user.Role.ADMIN) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Profile not found");
+        }
+
         return toDTO(profile, profile.getUser());
     }
 
@@ -69,7 +74,6 @@ public class ProfileService {
         Profile profile = profileRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Profile not found"));
 
-        // Оновлення displayName в таблиці users
         if (dto.getDisplayName() != null && !dto.getDisplayName().isBlank()) {
             String newName = dto.getDisplayName().trim();
             if (!newName.equalsIgnoreCase(user.getDisplayName())) {

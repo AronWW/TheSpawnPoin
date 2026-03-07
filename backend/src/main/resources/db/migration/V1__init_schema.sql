@@ -5,16 +5,24 @@
 -- ------------------------------------------------------------
 -- ENUM types
 -- ------------------------------------------------------------
-CREATE TYPE invite_status     AS ENUM ('PENDING', 'ACCEPTED', 'DECLINED');
-CREATE TYPE notification_type AS ENUM ('FRIEND_REQUEST', 'PARTY_INVITE', 'MESSAGE', 'SYSTEM');
-CREATE TYPE suggestion_status AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+CREATE TYPE invite_status        AS ENUM ('PENDING', 'ACCEPTED', 'DECLINED');
+CREATE TYPE suggestion_status    AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+CREATE TYPE report_reason        AS ENUM ('TOXIC_BEHAVIOR', 'CHEATING', 'SPAM', 'HARASSMENT', 'INAPPROPRIATE_CONTENT', 'OTHER');
+CREATE TYPE report_status        AS ENUM ('OPEN', 'REVIEWED', 'DISMISSED');
+CREATE TYPE ticket_status        AS ENUM ('OPEN', 'IN_PROGRESS', 'CLOSED');
+CREATE TYPE unban_request_status AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+CREATE TYPE notification_type    AS ENUM (
+    'FRIEND_REQUEST', 'PARTY_INVITE', 'MESSAGE', 'SYSTEM',
+    'GAME_SUGGESTION_APPROVED', 'GAME_SUGGESTION_REJECTED',
+    'REPORT_REVIEWED', 'SUPPORT_REPLY', 'UNBAN_REQUEST_REVIEWED'
+);
 
 -- ------------------------------------------------------------
 -- users
 -- ------------------------------------------------------------
 CREATE TABLE users
 (
-    id             BIGSERIAL PRIMARY KEY,
+    id             BIGSERIAL    PRIMARY KEY,
     display_name   VARCHAR(100) NOT NULL,
     email          VARCHAR(255) NOT NULL UNIQUE,
     password       VARCHAR(255) NOT NULL,
@@ -22,6 +30,9 @@ CREATE TABLE users
     role           VARCHAR(20)  NOT NULL DEFAULT 'USER',
     status         VARCHAR(10)  NOT NULL DEFAULT 'OFFLINE',
     last_seen      TIMESTAMPTZ,
+    banned         BOOLEAN      NOT NULL DEFAULT FALSE,
+    ban_reason     TEXT,
+    banned_at      TIMESTAMPTZ,
     created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
@@ -49,10 +60,10 @@ CREATE TABLE profiles
     nintendo    VARCHAR(200),
     CONSTRAINT chk_region CHECK (
         region IS NULL OR region IN (
-                                     'EUROPE', 'ASIA', 'NORTH_AMERICA', 'SOUTH_AMERICA',
-                                     'OCEANIA', 'AFRICA', 'MIDDLE_EAST'
-            )
+            'EUROPE', 'ASIA', 'NORTH_AMERICA', 'SOUTH_AMERICA',
+            'OCEANIA', 'AFRICA', 'MIDDLE_EAST'
         )
+    )
 );
 
 -- ------------------------------------------------------------
@@ -60,8 +71,8 @@ CREATE TABLE profiles
 -- ------------------------------------------------------------
 CREATE TABLE email_verification_tokens
 (
-    id           BIGSERIAL PRIMARY KEY,
-    user_id      BIGINT      NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    id           BIGSERIAL    PRIMARY KEY,
+    user_id      BIGINT       NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     code         VARCHAR(255) NOT NULL,
     expires_at   TIMESTAMPTZ  NOT NULL,
     last_sent_at TIMESTAMPTZ  NOT NULL
@@ -72,7 +83,7 @@ CREATE TABLE email_verification_tokens
 -- ------------------------------------------------------------
 CREATE TABLE password_reset_tokens
 (
-    id         BIGSERIAL PRIMARY KEY,
+    id         BIGSERIAL    PRIMARY KEY,
     token      VARCHAR(255) NOT NULL UNIQUE,
     user_id    BIGINT       NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     expires_at TIMESTAMPTZ  NOT NULL,
@@ -84,7 +95,7 @@ CREATE TABLE password_reset_tokens
 -- ------------------------------------------------------------
 CREATE TABLE games
 (
-    id             BIGSERIAL PRIMARY KEY,
+    id             BIGSERIAL    PRIMARY KEY,
     name           VARCHAR(100) NOT NULL,
     genre          VARCHAR(50),
     release_year   SMALLINT,
@@ -97,7 +108,7 @@ CREATE TABLE games
 -- ------------------------------------------------------------
 CREATE TABLE game_suggestions
 (
-    id             BIGSERIAL PRIMARY KEY,
+    id             BIGSERIAL         PRIMARY KEY,
     suggested_by   BIGINT            NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     name           VARCHAR(100)      NOT NULL,
     genre          VARCHAR(50),
@@ -139,7 +150,7 @@ CREATE TABLE friendships
 -- ------------------------------------------------------------
 CREATE TABLE chats
 (
-    id           BIGSERIAL PRIMARY KEY,
+    id           BIGSERIAL   PRIMARY KEY,
     title        VARCHAR(100),
     is_group     BOOLEAN     NOT NULL DEFAULT FALSE,
     party_linked BOOLEAN     NOT NULL DEFAULT FALSE,
@@ -163,7 +174,7 @@ CREATE TABLE chat_participants
 -- ------------------------------------------------------------
 CREATE TABLE messages
 (
-    id        BIGSERIAL PRIMARY KEY,
+    id        BIGSERIAL   PRIMARY KEY,
     chat_id   BIGINT      NOT NULL REFERENCES chats (id) ON DELETE CASCADE,
     sender_id BIGINT      REFERENCES users (id),
     content   TEXT        NOT NULL,
@@ -180,7 +191,7 @@ CREATE INDEX idx_msg_sender ON messages (sender_id);
 -- ------------------------------------------------------------
 CREATE TABLE party_requests
 (
-    id          BIGSERIAL PRIMARY KEY,
+    id          BIGSERIAL   PRIMARY KEY,
     creator_id  BIGINT      NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     game_id     BIGINT      NOT NULL REFERENCES games (id) ON DELETE CASCADE,
     chat_id     BIGINT      UNIQUE REFERENCES chats (id) ON DELETE SET NULL,
@@ -212,14 +223,14 @@ CREATE TABLE party_members
 -- ------------------------------------------------------------
 CREATE TABLE invites
 (
-    id              BIGSERIAL     PRIMARY KEY,
-    sender_id       BIGINT        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    receiver_id     BIGINT        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    type            VARCHAR(20)   NOT NULL DEFAULT 'FRIEND_REQUEST',
-    status          invite_status NOT NULL DEFAULT 'PENDING',
-    party_request_id BIGINT       REFERENCES party_requests (id) ON DELETE CASCADE,
-    created_at      TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
-    responded_at    TIMESTAMPTZ
+    id               BIGSERIAL     PRIMARY KEY,
+    sender_id        BIGINT        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    receiver_id      BIGINT        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    type             VARCHAR(20)   NOT NULL DEFAULT 'FRIEND_REQUEST',
+    status           invite_status NOT NULL DEFAULT 'PENDING',
+    party_request_id BIGINT        REFERENCES party_requests (id) ON DELETE CASCADE,
+    created_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    responded_at     TIMESTAMPTZ
 );
 
 -- ------------------------------------------------------------
@@ -235,3 +246,68 @@ CREATE TABLE notifications
     is_read      BOOLEAN           NOT NULL DEFAULT FALSE,
     created_at   TIMESTAMPTZ       NOT NULL DEFAULT NOW()
 );
+
+-- ------------------------------------------------------------
+-- user_reports
+-- ------------------------------------------------------------
+CREATE TABLE user_reports
+(
+    id               BIGSERIAL     PRIMARY KEY,
+    reporter_id      BIGINT        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    reported_user_id BIGINT        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    reason           report_reason NOT NULL,
+    description      TEXT,
+    status           report_status NOT NULL DEFAULT 'OPEN',
+    admin_comment    TEXT,
+    created_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    reviewed_at      TIMESTAMPTZ
+);
+
+CREATE INDEX idx_reports_status ON user_reports (status);
+
+-- ------------------------------------------------------------
+-- support_tickets
+-- ------------------------------------------------------------
+CREATE TABLE support_tickets
+(
+    id         BIGSERIAL     PRIMARY KEY,
+    user_id    BIGINT        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    subject    VARCHAR(200)  NOT NULL,
+    status     ticket_status NOT NULL DEFAULT 'OPEN',
+    created_at TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    closed_at  TIMESTAMPTZ
+);
+
+CREATE INDEX idx_tickets_status ON support_tickets (status);
+
+-- ------------------------------------------------------------
+-- support_messages
+-- ------------------------------------------------------------
+CREATE TABLE support_messages
+(
+    id        BIGSERIAL   PRIMARY KEY,
+    ticket_id BIGINT      NOT NULL REFERENCES support_tickets (id) ON DELETE CASCADE,
+    sender_id BIGINT      NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    content   TEXT        NOT NULL,
+    sent_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_support_msg_ticket ON support_messages (ticket_id);
+
+-- ------------------------------------------------------------
+-- unban_requests
+-- ------------------------------------------------------------
+CREATE TABLE unban_requests
+(
+    id            BIGSERIAL            PRIMARY KEY,
+    user_id       BIGINT               NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    reason        TEXT                 NOT NULL,
+    status        unban_request_status NOT NULL DEFAULT 'PENDING',
+    admin_comment TEXT,
+    ban_reason    TEXT,
+    created_at    TIMESTAMPTZ          NOT NULL DEFAULT NOW(),
+    reviewed_at   TIMESTAMPTZ
+);
+
+CREATE INDEX idx_unban_requests_status  ON unban_requests (status);
+CREATE INDEX idx_unban_requests_user_id ON unban_requests (user_id);

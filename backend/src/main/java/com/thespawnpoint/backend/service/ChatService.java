@@ -63,6 +63,10 @@ public class ChatService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Cannot send message to yourself");
         }
 
+        if (recipient.getRole() == com.thespawnpoint.backend.entity.user.Role.ADMIN) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Recipient not found");
+        }
+
         Chat chat = self().getOrCreateDmChat(sender, recipient);
 
         Message saved = messageRepository.save(Message.builder()
@@ -159,7 +163,7 @@ public class ChatService {
                     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found: " + email));
 
             if (member.getId().equals(creator.getId())) {
-                continue; // creator is already added
+                continue;
             }
 
             chatParticipantRepository.save(ChatParticipant.builder()

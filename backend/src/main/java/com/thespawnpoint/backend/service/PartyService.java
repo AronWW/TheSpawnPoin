@@ -46,10 +46,22 @@ public class PartyService {
         SkillLevel skillLevel = parseEnum(SkillLevel.class, dto.getSkillLevel(), "skill level");
         PlayStyle playStyle = parseEnum(PlayStyle.class, dto.getPlayStyle(), "play style");
 
+        int maxMembers = game.getMaxPartySize();
+        if (dto.getMaxMembers() != null) {
+            if (dto.getMaxMembers() < 2) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Мінімум 2 гравці");
+            }
+            if (dto.getMaxMembers() > game.getMaxPartySize()) {
+                throw new ApiException(HttpStatus.BAD_REQUEST,
+                        "Максимум для цієї гри — " + game.getMaxPartySize() + " гравців");
+            }
+            maxMembers = dto.getMaxMembers();
+        }
+
         PartyRequest party = PartyRequest.builder()
                 .creator(creator)
                 .game(game)
-                .maxMembers(game.getMaxPartySize())
+                .maxMembers(maxMembers)
                 .description(dto.getDescription())
                 .eventTime(dto.getEventTime())
                 .platform(dto.getPlatform())

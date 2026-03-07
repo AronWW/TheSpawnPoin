@@ -6,6 +6,7 @@ import { useAuthStore } from '../stores/auth'
 import { gameEmoji, genreColor } from '../utils/helpers'
 import api from '../api/axios'
 import type { Game, Page } from '../types'
+import SuggestGameModal from '../components/SuggestGameModal.vue'
 
 const router = useRouter()
 const gameStore = useGameStore()
@@ -13,6 +14,7 @@ const auth = useAuthStore()
 
 const search = ref('')
 const selectedGenre = ref('')
+const showSuggest = ref(false)
 
 const games = ref<Game[]>([])
 const loading = ref(false)
@@ -198,6 +200,13 @@ onMounted(async () => {
           <p>Спробуй змінити фільтри або пошуковий запит</p>
         </div>
       </template>
+
+      <div v-if="auth.isLoggedIn" class="suggest-game-footer">
+        Не знайшли свою гру?
+        <button class="suggest-game-link" @click="showSuggest = true">Запропонувати нову</button>
+      </div>
+
+      <SuggestGameModal v-if="showSuggest" @close="showSuggest = false" @submitted="showSuggest = false" />
     </div>
   </div>
 </template>
@@ -256,6 +265,28 @@ onMounted(async () => {
 }
 .fav-page-btn:hover .fav-count {
   background: var(--black);
+  color: var(--yellow);
+}
+
+.suggest-game-footer {
+  text-align: center;
+  padding: 24px 0 8px;
+  color: var(--gray);
+  font-size: 0.85rem;
+}
+.suggest-game-link {
+  background: none;
+  border: none;
+  color: var(--gray);
+  cursor: pointer;
+  font-family: var(--font-body), sans-serif;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s;
+  padding: 0;
+}
+.suggest-game-link:hover {
   color: var(--yellow);
 }
 

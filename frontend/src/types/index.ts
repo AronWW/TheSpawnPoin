@@ -7,6 +7,8 @@ export interface UserMe {
   status: string
   lastSeen: string
   avatarUrl: string | null
+  banned: boolean
+  banReason: string | null
 }
 
 export interface Game {
@@ -177,3 +179,112 @@ export interface ChatMessage {
   read: boolean
   system: boolean
 }
+
+export interface AdminDashboard {
+  totalUsers: number
+  bannedUsers: number
+  totalGames: number
+  openParties: number
+  pendingSuggestions: number
+  openReports: number
+  openTickets: number
+  pendingUnbanRequests: number
+}
+
+export interface AdminUser {
+  id: number
+  displayName: string
+  email: string
+  role: string
+  status: string
+  emailVerified: boolean
+  banned: boolean
+  banReason: string | null
+  bannedAt: string | null
+  lastSeen: string | null
+  createdAt: string
+  avatarUrl: string | null
+}
+
+export interface AdminActiveParty {
+  id: number
+  gameName: string
+  gameImageUrl: string | null
+  creatorDisplayName: string
+  currentMembers: number
+  maxMembers: number
+  language: string | null
+  createdAt: string
+}
+
+export interface GameSuggestion {
+  id: number
+  name: string
+  genre: string | null
+  releaseYear: number | null
+  imageUrl: string | null
+  maxPartySize: number
+  status: string
+  adminComment: string | null
+  suggestedByUserId: number
+  suggestedByDisplayName: string
+  createdAt: string
+  reviewedAt: string | null
+}
+
+export interface Report {
+  id: number
+  reporterId: number
+  reporterDisplayName: string
+  reportedUserId: number
+  reportedUserDisplayName: string
+  reason: string
+  description: string | null
+  status: string
+  adminComment: string | null
+  createdAt: string
+  reviewedAt: string | null
+}
+
+export interface SupportTicket {
+  id: number
+  userId: number
+  userDisplayName: string
+  subject: string
+  status: string
+  createdAt: string
+  closedAt: string | null
+}
+
+export interface TicketMessage {
+  id: number
+  senderId: number
+  senderDisplayName: string
+  senderAvatarUrl: string | null
+  admin: boolean
+  content: string
+  sentAt: string
+}
+
+export interface BanRecord {
+  banReason: string | null
+  createdAt: string
+  requestReason: string
+  requestStatus: string
+}
+
+export interface UnbanRequest {
+  id: number
+  userId: number
+  userDisplayName: string
+  userEmail: string
+  userAvatarUrl: string | null
+  reason: string
+  status: string
+  adminComment: string | null
+  banReason: string | null
+  banHistory: BanRecord[]
+  createdAt: string
+  reviewedAt: string | null
+}
+

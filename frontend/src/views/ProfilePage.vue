@@ -8,6 +8,7 @@ import { API_BASE_URL } from '../config'
 import api from '../api/axios'
 import type { Profile, Game } from '../types'
 import { skillLabel, gameEmoji, genreColor } from '../utils/helpers'
+import ReportUserModal from '../components/ReportUserModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,6 +21,7 @@ const favoriteGames = ref<Game[]>([])
 const loading = ref(false)
 const error = ref('')
 const addingFriend = ref(false)
+const showReport = ref(false)
 
 const REGION_LABELS: Record<string, string> = {
   EUROPE:        '🌍 Європа',
@@ -241,9 +243,17 @@ watch(() => route.params.userId, (newId) => {
               <button v-else class="profile-action-btn add-friend-btn" :disabled="addingFriend" @click="sendFriendRequest">
                 + Додати в друзі
               </button>
+              <button class="profile-action-btn report-btn" @click="showReport = true">🚩 Скарга</button>
             </div>
           </div>
         </div>
+
+        <ReportUserModal
+          v-if="showReport && profile"
+          :reported-user-id="profile.userId"
+          :reported-user-name="profile.displayName"
+          @close="showReport = false"
+        />
 
         <div v-if="profile.bio" class="profile-section ink-panel">
           <h2 class="section-label">ПРО ГРАВЦЯ</h2>
@@ -473,6 +483,8 @@ watch(() => route.params.userId, (newId) => {
 .add-friend-btn    { border-color: var(--yellow-dim); color: var(--yellow); }
 .friend-badge-btn  { border-color: rgba(46,204,113,0.3); color: #2ecc71; background: rgba(46,204,113,0.08); }
 .pending-badge-btn { color: var(--gray); }
+.report-btn        { border-color: var(--red-dim); color: var(--red); font-size: 11px; }
+.report-btn:hover  { background: rgba(192, 57, 43, 0.12); border-color: var(--red); }
 
 .profile-section {
   padding: 24px 28px;

@@ -208,6 +208,28 @@ img { display: block; }
 }
 .notif-btn:hover { border-color: var(--yellow); color: var(--yellow); }
 
+.nav-admin-btn {
+  font-family: var(--font-display), sans-serif;
+  letter-spacing: 2px;
+  font-size: 12px;
+  padding: 6px 16px;
+  border: 2px solid var(--yellow-dim);
+  background: rgba(245, 197, 24, 0.08);
+  color: var(--yellow);
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: background 0.15s, border-color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.nav-admin-btn:hover {
+  background: var(--yellow);
+  color: var(--black);
+  border-color: var(--yellow);
+}
+
 .nav-auth-btn {
   font-family: var(--font-display);
   letter-spacing: 2px;

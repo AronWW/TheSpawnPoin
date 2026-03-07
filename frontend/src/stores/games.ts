@@ -11,6 +11,8 @@ export const useGameStore = defineStore('games', () => {
   const favoriteGames = ref<Game[]>([])
   const favoritesLoading = ref(false)
 
+  const mySuggestionsCount = ref(0)
+
   async function fetchGames() {
     loading.value = true
     try {
@@ -73,10 +75,20 @@ export const useGameStore = defineStore('games', () => {
     }
   }
 
+  async function fetchMySuggestionsCount() {
+    try {
+      const { data } = await api.get<any[]>('/game-suggestions/my')
+      mySuggestionsCount.value = data.length
+    } catch {
+      mySuggestionsCount.value = 0
+    }
+  }
+
   return {
     games, loading, fetchGames,
     favoriteGameIds, favoriteGames, favoritesLoading,
     fetchFavorites, isFavorite, addFavorite, removeFavorite, toggleFavorite,
+    mySuggestionsCount, fetchMySuggestionsCount,
   }
 })
 

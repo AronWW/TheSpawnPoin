@@ -26,10 +26,7 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -191,14 +188,17 @@ public class AuthService {
 
         setAuthCookies(response, user.getEmail(), dto.isRememberMe());
 
-        return Map.of(
-                "message", "Successful login",
-                "id", user.getId(),
-                "email", user.getEmail(),
-                "displayName", user.getDisplayName(),
-                "role", user.getRole().name(),
-                "status", user.getStatus().name()
-        );
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("message", "Successful login");
+        body.put("id", user.getId());
+        body.put("email", user.getEmail());
+        body.put("displayName", user.getDisplayName());
+        body.put("role", user.getRole().name());
+        body.put("status", user.getStatus().name());
+        body.put("banned", user.isBanned());
+        body.put("banReason", user.getBanReason());
+
+        return body;
     }
 
     // REFRESH ТОКЕНУ

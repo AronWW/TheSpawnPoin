@@ -45,6 +45,10 @@ export function notificationIcon(type: string): string {
     MESSAGE: '💬',
     PARTY_FULL: '🎮',
     PARTY_JOIN: '🎮',
+    GAME_SUGGESTION_APPROVED: '✅',
+    GAME_SUGGESTION_REJECTED: '❌',
+    REPORT_REVIEWED: '📋',
+    SUPPORT_REPLY: '📩',
   }
   return map[type] ?? '🔔'
 }

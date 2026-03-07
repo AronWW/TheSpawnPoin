@@ -45,6 +45,15 @@ public class User {
 
     private Instant lastSeen;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean banned = false;
+
+    @Column(columnDefinition = "TEXT")
+    private String banReason;
+
+    private Instant bannedAt;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
