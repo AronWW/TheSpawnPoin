@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth'
 import { usePartyStore } from '../stores/parties'
 import type { Party } from '../types'
 import { skillLabel, timeAgo, gameEmoji } from '../utils/helpers'
+import { API_BASE_URL } from '../config'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,16 +18,14 @@ const error = ref('')
 const actionLoading = ref(false)
 const actionError = ref('')
 
-const avatarBase = 'http://localhost:8080'
-
 function resolveAvatar(url: string | null): string {
-  if (!url) return avatarBase + '/avatars/default/avatar-1.png'
+  if (!url) return API_BASE_URL + '/avatars/default/avatar-1.png'
   if (url.startsWith('http')) return url
-  return avatarBase + url
+  return API_BASE_URL + url
 }
 
 const isCreator = computed(() =>
-  auth.user && party.value && auth.user.id === party.value.creatorId
+    auth.user && party.value && auth.user.id === party.value.creatorId
 )
 
 const isMember = computed(() => {
@@ -35,14 +34,14 @@ const isMember = computed(() => {
 })
 
 const canJoin = computed(() =>
-  auth.isLoggedIn &&
-  party.value?.isOpen &&
-  !isMember.value &&
-  party.value.currentMembers < party.value.maxMembers
+    auth.isLoggedIn &&
+    party.value?.isOpen &&
+    !isMember.value &&
+    party.value.currentMembers < party.value.maxMembers
 )
 
 const isFull = computed(() =>
-  party.value ? party.value.currentMembers >= party.value.maxMembers : false
+    party.value ? party.value.currentMembers >= party.value.maxMembers : false
 )
 
 async function loadParty() {
@@ -78,7 +77,7 @@ async function handleLeave() {
   actionError.value = ''
   try {
     await partyStore.leaveParty(party.value.id)
-    router.push('/my-parties')
+    router.push('/search-parties')
   } catch (e: any) {
     actionError.value = e.message || 'Помилка'
   } finally {
@@ -188,12 +187,12 @@ watch(() => route.params.id, () => {
 
           <div class="slots-visual">
             <div v-for="i in party.maxMembers" :key="i" class="member-slot" :class="{ filled: i <= party.currentMembers }">
-              <template v-if="i <= party.currentMembers && party.members && party.members[i - 1]">
-                <router-link :to="'/profile/' + party.members[i - 1].userId" class="member-card">
-                  <img :src="resolveAvatar(party.members[i - 1].avatarUrl)" :alt="party.members[i - 1].displayName" class="member-avatar" />
+              <template v-if="i <= party.currentMembers && party.members?.[i - 1]">
+                <router-link :to="'/profile/' + (party.members?.[i - 1]?.userId ?? '')" class="member-card">
+                  <img :src="resolveAvatar(party.members?.[i - 1]?.avatarUrl ?? null)" :alt="party.members?.[i - 1]?.displayName ?? 'Member'" class="member-avatar" />
                   <div class="member-info">
-                    <span class="member-name">{{ party.members[i - 1].displayName }}</span>
-                    <span v-if="party.members[i - 1].isCreator" class="creator-tag">ХОСТ</span>
+                    <span class="member-name">{{ party.members?.[i - 1]?.displayName ?? 'Member' }}</span>
+                    <span v-if="party.members?.[i - 1]?.isCreator" class="creator-tag">ХОСТ</span>
                   </div>
                 </router-link>
               </template>
@@ -213,10 +212,10 @@ watch(() => route.params.id, () => {
 
         <div class="detail-actions">
           <button
-            v-if="canJoin"
-            class="btn-primary"
-            :disabled="actionLoading"
-            @click="handleJoin"
+              v-if="canJoin"
+              class="btn-primary"
+              :disabled="actionLoading"
+              @click="handleJoin"
           >
             {{ actionLoading ? 'ПРИЄДНАННЯ...' : '⚡ ПРИЄДНАТИСЯ' }}
           </button>
@@ -230,36 +229,27 @@ watch(() => route.params.id, () => {
           </router-link>
 
           <button
-            v-if="isMember && party.chatId"
-            class="btn-secondary"
-            @click="goToChat"
+              v-if="isMember && party.chatId"
+              class="btn-secondary"
+              @click="goToChat"
           >
             💬 ГРУПОВИЙ ЧАТ
           </button>
 
           <button
-            v-if="isMember && !isCreator"
-            class="btn-danger"
-            :disabled="actionLoading"
-            @click="handleLeave"
-          >
-            {{ actionLoading ? '...' : 'ПОКИНУТИ ЛОБІ' }}
-          </button>
-
-          <button
-            v-if="isCreator && party.isOpen"
-            class="btn-danger-outline"
-            :disabled="actionLoading"
-            @click="handleClose"
+              v-if="isCreator && party.isOpen"
+              class="btn-danger-outline"
+              :disabled="actionLoading"
+              @click="handleClose"
           >
             {{ actionLoading ? '...' : 'ЗАКРИТИ ЛОБІ' }}
           </button>
 
           <button
-            v-if="isCreator"
-            class="btn-danger"
-            :disabled="actionLoading"
-            @click="handleLeave"
+              v-if="isMember && !isCreator"
+              class="btn-danger"
+              :disabled="actionLoading"
+              @click="handleLeave"
           >
             {{ actionLoading ? '...' : 'ПОКИНУТИ ЛОБІ' }}
           </button>
@@ -696,7 +686,3 @@ watch(() => route.params.id, () => {
   }
 }
 </style>
-
-
-
-

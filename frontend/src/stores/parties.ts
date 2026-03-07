@@ -1,13 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../api/axios'
-import type { Party, CreatePartyRequest, SortOption } from '../types'
+import type { Party, CreatePartyRequest, SortOption, Page } from '../types'
 
 export const usePartyStore = defineStore('parties', () => {
   const parties = ref<Party[]>([])
   const loading = ref(false)
 
-  /* ─── Filters (client-side text search + server params) ─── */
   const search = ref('')
   const filterGameId = ref<number | null>(null)
   const filterPlatform = ref('')
@@ -15,7 +14,13 @@ export const usePartyStore = defineStore('parties', () => {
   const filterLanguage = ref('')
   const sortBy = ref<SortOption>('newest')
 
-  /* Fetch parties from backend with applicable server filters */
+  const searchParties = ref<Party[]>([])
+  const searchLoading = ref(false)
+  const searchPage = ref(0)
+  const searchTotalPages = ref(0)
+  const searchTotalElements = ref(0)
+  const searchSize = ref(8)
+
   async function fetchParties() {
     loading.value = true
     try {
@@ -40,15 +45,15 @@ export const usePartyStore = defineStore('parties', () => {
     const q = search.value.toLowerCase().trim()
     if (q) {
       result = result.filter(
-        (p) =>
-          p.gameName.toLowerCase().includes(q) ||
-          (p.description ?? '').toLowerCase().includes(q)
+          (p) =>
+              p.gameName.toLowerCase().includes(q) ||
+              (p.description ?? '').toLowerCase().includes(q)
       )
     }
 
     if (sortBy.value === 'slots') {
       result = [...result].sort(
-        (a, b) => (b.maxMembers - b.currentMembers) - (a.maxMembers - a.currentMembers)
+          (a, b) => (b.maxMembers - b.currentMembers) - (a.maxMembers - a.currentMembers)
       )
     } else if (sortBy.value === 'game') {
       result = [...result].sort((a, b) => a.gameName.localeCompare(b.gameName))
@@ -113,6 +118,43 @@ export const usePartyStore = defineStore('parties', () => {
     sortBy.value = 'newest'
   }
 
+  async function fetchSearchParties(page = 0) {
+    searchLoading.value = true
+    try {
+      const params: Record<string, string | number> = { page, size: searchSize.value }
+      if (search.value.trim()) params.q = search.value.trim()
+      if (filterGameId.value) params.gameId = filterGameId.value
+      if (filterPlatform.value) params.platform = filterPlatform.value
+      if (filterSkillLevel.value) params.skillLevel = filterSkillLevel.value
+      if (filterLanguage.value) params.language = filterLanguage.value
+
+      const { data } = await api.get<Page<Party>>('/parties/search', { params })
+      searchParties.value = data.content
+      searchPage.value = data.page?.number ?? page
+      searchTotalPages.value = data.page?.totalPages ?? 0
+      searchTotalElements.value = data.page?.totalElements ?? 0
+    } catch {
+      searchParties.value = []
+    } finally {
+      searchLoading.value = false
+    }
+  }
+
+  const myParties = ref<Party[]>([])
+  const myPartiesLoading = ref(false)
+
+  async function fetchMyParties() {
+    myPartiesLoading.value = true
+    try {
+      const { data } = await api.get<Party[]>('/parties/my')
+      myParties.value = data
+    } catch {
+      myParties.value = []
+    } finally {
+      myPartiesLoading.value = false
+    }
+  }
+
   return {
     parties,
     loading,
@@ -130,5 +172,15 @@ export const usePartyStore = defineStore('parties', () => {
     leaveParty,
     closeParty,
     resetFilters,
+    searchParties,
+    searchLoading,
+    searchPage,
+    searchTotalPages,
+    searchTotalElements,
+    searchSize,
+    fetchSearchParties,
+    myParties,
+    myPartiesLoading,
+    fetchMyParties,
   }
 })

@@ -56,7 +56,25 @@ public class Profile {
     @Column(name = "country", length = 100)
     private String country;
 
-    @Column(name = "region", length = 100)
-    private String region;
-}
+    @Enumerated(EnumType.STRING)
+    @Column(name = "region", length = 30)
+    private Region region;
 
+    @Column(name = "discord", length = 100)
+    private String discord;
+
+    @Column(name = "steam", length = 200)
+    private String steam;
+
+    @Column(name = "twitch", length = 200)
+    private String twitch;
+
+    @Column(name = "xbox", length = 200)
+    private String xbox;
+
+    @Column(name = "playstation", length = 200)
+    private String playstation;
+
+    @Column(name = "nintendo", length = 200)
+    private String nintendo;
+}

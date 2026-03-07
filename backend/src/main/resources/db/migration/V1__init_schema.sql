@@ -5,7 +5,7 @@
 -- ------------------------------------------------------------
 -- ENUM types
 -- ------------------------------------------------------------
-CREATE TYPE invite_status    AS ENUM ('PENDING', 'ACCEPTED', 'DECLINED');
+CREATE TYPE invite_status     AS ENUM ('PENDING', 'ACCEPTED', 'DECLINED');
 CREATE TYPE notification_type AS ENUM ('FRIEND_REQUEST', 'PARTY_INVITE', 'MESSAGE', 'SYSTEM');
 CREATE TYPE suggestion_status AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
 
@@ -40,7 +40,19 @@ CREATE TABLE profiles
     play_style  VARCHAR(20),
     languages   VARCHAR(50)[],
     country     VARCHAR(100),
-    region      VARCHAR(100)
+    region      VARCHAR(30),
+    discord     VARCHAR(100),
+    steam       VARCHAR(200),
+    twitch      VARCHAR(200),
+    xbox        VARCHAR(200),
+    playstation VARCHAR(200),
+    nintendo    VARCHAR(200),
+    CONSTRAINT chk_region CHECK (
+        region IS NULL OR region IN (
+                                     'EUROPE', 'ASIA', 'NORTH_AMERICA', 'SOUTH_AMERICA',
+                                     'OCEANIA', 'AFRICA', 'MIDDLE_EAST'
+            )
+        )
 );
 
 -- ------------------------------------------------------------
@@ -49,7 +61,7 @@ CREATE TABLE profiles
 CREATE TABLE email_verification_tokens
 (
     id           BIGSERIAL PRIMARY KEY,
-    user_id      BIGINT       NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    user_id      BIGINT      NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     code         VARCHAR(255) NOT NULL,
     expires_at   TIMESTAMPTZ  NOT NULL,
     last_sent_at TIMESTAMPTZ  NOT NULL
@@ -72,29 +84,29 @@ CREATE TABLE password_reset_tokens
 -- ------------------------------------------------------------
 CREATE TABLE games
 (
-    id              BIGSERIAL PRIMARY KEY,
-    name            VARCHAR(100) NOT NULL,
-    genre           VARCHAR(50),
-    release_year    SMALLINT,
-    image_url       VARCHAR(500),
-    max_party_size  INTEGER      NOT NULL DEFAULT 5
+    id             BIGSERIAL PRIMARY KEY,
+    name           VARCHAR(100) NOT NULL,
+    genre          VARCHAR(50),
+    release_year   SMALLINT,
+    image_url      VARCHAR(500),
+    max_party_size INTEGER      NOT NULL DEFAULT 5
 );
 
 -- ------------------------------------------------------------
--- game_suggestions  (players suggest new games for admin review)
+-- game_suggestions
 -- ------------------------------------------------------------
 CREATE TABLE game_suggestions
 (
     id             BIGSERIAL PRIMARY KEY,
-    suggested_by   BIGINT           NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    name           VARCHAR(100)     NOT NULL,
+    suggested_by   BIGINT            NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    name           VARCHAR(100)      NOT NULL,
     genre          VARCHAR(50),
     release_year   SMALLINT,
     image_url      VARCHAR(500),
-    max_party_size INTEGER          NOT NULL DEFAULT 5,
+    max_party_size INTEGER           NOT NULL DEFAULT 5,
     status         suggestion_status NOT NULL DEFAULT 'PENDING',
     admin_comment  TEXT,
-    created_at     TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+    created_at     TIMESTAMPTZ       NOT NULL DEFAULT NOW(),
     reviewed_at    TIMESTAMPTZ
 );
 
@@ -147,7 +159,7 @@ CREATE TABLE chat_participants
 );
 
 -- ------------------------------------------------------------
--- messages  (belong to a chat; sender_id nullable for system messages)
+-- messages
 -- ------------------------------------------------------------
 CREATE TABLE messages
 (
@@ -200,12 +212,14 @@ CREATE TABLE party_members
 -- ------------------------------------------------------------
 CREATE TABLE invites
 (
-    id           BIGSERIAL PRIMARY KEY,
-    sender_id    BIGINT        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    receiver_id  BIGINT        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    status       invite_status NOT NULL DEFAULT 'PENDING',
-    created_at   TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
-    responded_at TIMESTAMPTZ
+    id              BIGSERIAL     PRIMARY KEY,
+    sender_id       BIGINT        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    receiver_id     BIGINT        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    type            VARCHAR(20)   NOT NULL DEFAULT 'FRIEND_REQUEST',
+    status          invite_status NOT NULL DEFAULT 'PENDING',
+    party_request_id BIGINT       REFERENCES party_requests (id) ON DELETE CASCADE,
+    created_at      TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    responded_at    TIMESTAMPTZ
 );
 
 -- ------------------------------------------------------------
@@ -213,10 +227,11 @@ CREATE TABLE invites
 -- ------------------------------------------------------------
 CREATE TABLE notifications
 (
-    id         BIGSERIAL PRIMARY KEY,
-    user_id    BIGINT            NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    type       notification_type NOT NULL,
-    message    TEXT              NOT NULL,
-    is_read    BOOLEAN           NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ       NOT NULL DEFAULT NOW()
+    id           BIGSERIAL         PRIMARY KEY,
+    user_id      BIGINT            NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    type         notification_type NOT NULL,
+    message      TEXT              NOT NULL,
+    reference_id BIGINT,
+    is_read      BOOLEAN           NOT NULL DEFAULT FALSE,
+    created_at   TIMESTAMPTZ       NOT NULL DEFAULT NOW()
 );

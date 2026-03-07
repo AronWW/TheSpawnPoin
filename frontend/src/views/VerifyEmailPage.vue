@@ -70,7 +70,6 @@ onMounted(() => {
     <div class="auth-container auth-container--narrow">
       <div class="auth-form-panel auth-form-panel--full">
         <div class="auth-form-header">
-          <div class="auth-form-icon">📧</div>
           <h1 class="auth-form-title">ПІДТВЕРДЖЕННЯ EMAIL</h1>
           <p class="auth-form-sub">
             Ми надіслали 6-значний код на <strong>{{ email || 'вашу пошту' }}</strong>

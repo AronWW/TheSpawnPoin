@@ -8,6 +8,8 @@ import com.thespawnpoint.backend.service.PartyInviteService;
 import com.thespawnpoint.backend.service.PartyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -68,6 +70,20 @@ public class PartyController {
     @GetMapping("/{id}")
     public ResponseEntity<PartyRequestDTO> getParty(@PathVariable Long id) {
         return ResponseEntity.ok(partyService.getPartyById(id));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<Page<PartyRequestDTO>> searchParties(
+            @RequestParam(required = false) Long gameId,
+            @RequestParam(required = false) String platform,
+            @RequestParam(required = false) String skillLevel,
+            @RequestParam(required = false) String playStyle,
+            @RequestParam(required = false) String language,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size) {
+        return ResponseEntity.ok(partyService.getOpenPartiesPaged(
+                gameId, platform, skillLevel, playStyle, language,
+                PageRequest.of(page, size)));
     }
 
     @GetMapping("/my")

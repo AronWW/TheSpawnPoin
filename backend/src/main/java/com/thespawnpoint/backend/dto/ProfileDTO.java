@@ -22,5 +22,10 @@ public class ProfileDTO {
     private List<String> languages;
     private String country;
     private String region;
+    private String discord;
+    private String steam;
+    private String twitch;
+    private String xbox;
+    private String playstation;
+    private String nintendo;
 }
-

@@ -7,6 +7,8 @@ import com.thespawnpoint.backend.entity.user.User;
 import com.thespawnpoint.backend.service.GameService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +29,15 @@ public class GameController {
                 ? gameService.searchGames(q)
                 : gameService.getAllGames();
         return ResponseEntity.ok(games);
+    }
+
+    @GetMapping("/games/search")
+    public ResponseEntity<Page<GameDTO>> searchGames(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String genre,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(gameService.searchGamesPaged(q, genre, PageRequest.of(page, size)));
     }
 
     @GetMapping("/games/{id}")

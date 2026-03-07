@@ -1,4 +1,3 @@
-
 export interface UserMe {
   id: number
   email: string
@@ -57,6 +56,7 @@ export interface CreatePartyRequest {
   language: string
   skillLevel: string
   playStyle: string | null
+  maxMembers: number
 }
 
 export interface Notification {
@@ -70,10 +70,18 @@ export interface Notification {
 
 export interface Page<T> {
   content: T[]
-  totalElements: number
-  totalPages: number
-  number: number
-  size: number
+
+  page?: {
+    totalElements: number
+    totalPages: number
+    number: number
+    size: number
+  }
+
+  totalElements?: number
+  totalPages?: number
+  number?: number
+  size?: number
 }
 
 export interface PartyFilters {
@@ -123,6 +131,12 @@ export interface Profile {
   languages: string[]
   country: string | null
   region: string | null
+  discord: string | null
+  steam: string | null
+  twitch: string | null
+  xbox: string | null
+  playstation: string | null
+  nintendo: string | null
 }
 
 export interface ChatParticipant {
@@ -163,4 +177,3 @@ export interface ChatMessage {
   read: boolean
   system: boolean
 }
-

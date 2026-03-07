@@ -22,6 +22,7 @@ const form = ref<CreatePartyRequest>({
   language: 'UA',
   skillLevel: 'INTERMEDIATE',
   playStyle: null,
+  maxMembers: 4,
 })
 
 const selectedPlatform = ref('PC')
@@ -64,6 +65,7 @@ function resetForm() {
     language: 'UA',
     skillLevel: 'INTERMEDIATE',
     playStyle: null,
+    maxMembers: 4,
   }
   selectedPlatform.value = 'PC'
   error.value = ''
@@ -84,9 +86,7 @@ function close() {
           <button class="modal-close" @click="close">✕</button>
         </div>
         <div class="modal-body">
-          <div v-if="error" style="color:var(--red);font-size:13px;margin-bottom:12px;letter-spacing:1px">
-            {{ error }}
-          </div>
+          <div v-if="error" class="modal-error">{{ error }}</div>
 
           <div class="form-group">
             <label class="form-label">Гра *</label>
@@ -139,8 +139,26 @@ function close() {
           </div>
 
           <div class="form-group">
+            <label class="form-label">Максимум гравців</label>
+            <div class="members-select">
+              <button
+                  v-for="n in [2, 3, 4, 5, 6, 8, 10]"
+                  :key="n"
+                  type="button"
+                  class="members-btn"
+                  :class="{ active: form.maxMembers === n }"
+                  @click="form.maxMembers = n"
+              >{{ n }}</button>
+            </div>
+          </div>
+
+          <div class="form-group">
             <label class="form-label">Опис (необов'язково)</label>
-            <textarea class="form-textarea" v-model="form.description" placeholder="Що ти шукаєш у тімейтах? Стиль гри, вимоги, плани..."></textarea>
+            <textarea
+                class="form-textarea"
+                v-model="form.description"
+                placeholder="Що ти шукаєш у тімейтах? Стиль гри, вимоги, плани..."
+            ></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -154,3 +172,45 @@ function close() {
   </Transition>
 </template>
 
+<style scoped>
+.modal-error {
+  color: var(--red);
+  font-size: 13px;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+}
+
+.members-select {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.members-btn {
+  width: 44px;
+  height: 44px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 1px;
+  background: var(--dark);
+  border: 2px solid var(--border);
+  color: var(--gray-light);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.members-btn:hover {
+  border-color: var(--yellow-dim);
+  color: var(--white);
+}
+
+.members-btn.active {
+  background: var(--yellow-glow);
+  border-color: var(--yellow);
+  color: var(--yellow);
+  font-weight: 700;
+}
+</style>

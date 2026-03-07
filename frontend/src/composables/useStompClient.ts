@@ -17,7 +17,7 @@ function makeDispatcher(destination: string): (msg: IMessage) => void {
     const entries = pendingCallbacks.get(destination)
     if (entries) {
       for (const entry of entries) {
-        try { entry.callback(msg) } catch { /* ignore */ }
+        try { entry.callback(msg) } catch {  }
       }
     }
   }

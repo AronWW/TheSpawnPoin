@@ -14,6 +14,8 @@ import com.thespawnpoint.backend.entity.chat.Chat;
 import com.thespawnpoint.backend.exception.ApiException;
 import com.thespawnpoint.backend.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -182,18 +184,14 @@ public class PartyService {
     }
 
     public List<PartyRequestDTO> getOpenParties(Long gameId, String platform,
-                                                 String skillLevel, String playStyle,
-                                                 String language) {
+                                                String skillLevel, String playStyle,
+                                                String language) {
+
+        String platformParam = (platform != null && !platform.isBlank()) ? platform : null;
 
         List<PartyRequest> parties = partyRequestRepository.findOpenWithFilters(
-                gameId, skillLevel, playStyle, language
+                gameId, skillLevel, playStyle, language, platformParam
         );
-
-        if (platform != null && !platform.isBlank()) {
-            parties = parties.stream()
-                    .filter(p -> p.getPlatform() != null && p.getPlatform().contains(platform))
-                    .toList();
-        }
 
         return parties.stream()
                 .map(p -> {
@@ -209,6 +207,22 @@ public class PartyService {
 
         List<PartyMember> members = partyMemberRepository.findByPartyRequestId(partyId);
         return toDTO(party, members);
+    }
+
+    public Page<PartyRequestDTO> getOpenPartiesPaged(Long gameId, String platform,
+                                                     String skillLevel, String playStyle,
+                                                     String language, Pageable pageable) {
+
+        String platformParam = (platform != null && !platform.isBlank()) ? platform : null;
+
+        Page<PartyRequest> page = partyRequestRepository.findOpenWithFiltersPaged(
+                gameId, skillLevel, playStyle, language, platformParam, pageable
+        );
+
+        return page.map(p -> {
+            int count = partyMemberRepository.countByPartyRequestId(p.getId());
+            return toListDTO(p, count);
+        });
     }
 
     public List<PartyRequestDTO> getMyParties(User user) {
@@ -322,5 +336,3 @@ public class PartyService {
         }
     }
 }
-
-

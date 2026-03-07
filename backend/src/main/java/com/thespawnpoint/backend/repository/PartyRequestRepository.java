@@ -1,6 +1,8 @@
 package com.thespawnpoint.backend.repository;
 
 import com.thespawnpoint.backend.entity.party.PartyRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,22 +24,52 @@ public interface PartyRequestRepository extends JpaRepository<PartyRequest, Long
 
     Optional<PartyRequest> findByChatId(Long chatId);
 
-    @Query("""
-            SELECT pr FROM PartyRequest pr
-            JOIN FETCH pr.game
-            JOIN FETCH pr.creator
-            WHERE pr.isOpen = true
-              AND (:gameId IS NULL OR pr.game.id = :gameId)
-              AND (:skillLevel IS NULL OR pr.skillLevel = :skillLevel)
-              AND (:playStyle IS NULL OR pr.playStyle = :playStyle)
-              AND (:language IS NULL OR pr.language = :language)
-            ORDER BY pr.createdAt DESC
-            """)
+    // Використовується для /api/parties (без пагінації)
+    @Query(value = """
+            SELECT pr.* FROM party_requests pr
+            WHERE pr.is_open = true
+              AND (:gameId   IS NULL OR pr.game_id     = :gameId)
+              AND (:skillLevel IS NULL OR pr.skill_level = :skillLevel)
+              AND (:playStyle  IS NULL OR pr.play_style  = :playStyle)
+              AND (:language   IS NULL OR pr.language    = :language)
+              AND (:platform   IS NULL OR :platform = ANY(pr.platform))
+            ORDER BY pr.created_at DESC
+            """, nativeQuery = true)
     List<PartyRequest> findOpenWithFilters(
-            @Param("gameId") Long gameId,
+            @Param("gameId")     Long gameId,
             @Param("skillLevel") String skillLevel,
-            @Param("playStyle") String playStyle,
-            @Param("language") String language
+            @Param("playStyle")  String playStyle,
+            @Param("language")   String language,
+            @Param("platform")   String platform
+    );
+
+    // Використовується для /api/parties/search (з пагінацією)
+    @Query(value = """
+            SELECT pr.* FROM party_requests pr
+            WHERE pr.is_open = true
+              AND (:gameId     IS NULL OR pr.game_id     = :gameId)
+              AND (:skillLevel IS NULL OR pr.skill_level = :skillLevel)
+              AND (:playStyle  IS NULL OR pr.play_style  = :playStyle)
+              AND (:language   IS NULL OR pr.language    = :language)
+              AND (:platform   IS NULL OR :platform = ANY(pr.platform))
+            ORDER BY pr.created_at DESC
+            """,
+            countQuery = """
+            SELECT COUNT(*) FROM party_requests pr
+            WHERE pr.is_open = true
+              AND (:gameId     IS NULL OR pr.game_id     = :gameId)
+              AND (:skillLevel IS NULL OR pr.skill_level = :skillLevel)
+              AND (:playStyle  IS NULL OR pr.play_style  = :playStyle)
+              AND (:language   IS NULL OR pr.language    = :language)
+              AND (:platform   IS NULL OR :platform = ANY(pr.platform))
+            """,
+            nativeQuery = true)
+    Page<PartyRequest> findOpenWithFiltersPaged(
+            @Param("gameId")     Long gameId,
+            @Param("skillLevel") String skillLevel,
+            @Param("playStyle")  String playStyle,
+            @Param("language")   String language,
+            @Param("platform")   String platform,
+            Pageable pageable
     );
 }
-

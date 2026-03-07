@@ -10,6 +10,8 @@ import com.thespawnpoint.backend.repository.GameRepository;
 import com.thespawnpoint.backend.repository.GameSuggestionRepository;
 import com.thespawnpoint.backend.repository.UserGameRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +43,13 @@ public class GameService {
         Game game = gameRepository.findById(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Game not found"));
         return toDTO(game);
+    }
+
+    public Page<GameDTO> searchGamesPaged(String q, String genre, Pageable pageable) {
+        String queryParam = (q != null && !q.isBlank()) ? q : null;
+        String genreParam = (genre != null && !genre.isBlank()) ? genre : null;
+        return gameRepository.searchPaged(queryParam, genreParam, pageable)
+                .map(this::toDTO);
     }
 
     public List<GameDTO> getUserGames(Long userId) {

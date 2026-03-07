@@ -5,6 +5,7 @@ import com.thespawnpoint.backend.dto.UpdateProfileDTO;
 import com.thespawnpoint.backend.entity.user.*;
 import com.thespawnpoint.backend.exception.ApiException;
 import com.thespawnpoint.backend.repository.ProfileRepository;
+import com.thespawnpoint.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -26,6 +27,7 @@ import java.util.UUID;
 public class ProfileService {
 
     private final ProfileRepository profileRepository;
+    private final UserRepository userRepository;
 
     @Value("${app.upload.dir:uploads/avatars}")
     private String uploadDir;
@@ -67,33 +69,54 @@ public class ProfileService {
         Profile profile = profileRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Profile not found"));
 
-        if (dto.getFullName() != null) {
-            profile.setFullName(dto.getFullName());
+        // Оновлення displayName в таблиці users
+        if (dto.getDisplayName() != null && !dto.getDisplayName().isBlank()) {
+            String newName = dto.getDisplayName().trim();
+            if (!newName.equalsIgnoreCase(user.getDisplayName())) {
+                if (userRepository.existsByDisplayNameIgnoreCase(newName)) {
+                    throw new ApiException(HttpStatus.CONFLICT, "Display name already taken");
+                }
+                user.setDisplayName(newName);
+                userRepository.save(user);
+            }
         }
-        if (dto.getBio() != null) {
-            profile.setBio(dto.getBio());
-        }
-        if (dto.getBirthDate() != null) {
-            profile.setBirthDate(dto.getBirthDate());
-        }
+
+        if (dto.getFullName() != null)   profile.setFullName(dto.getFullName());
+        if (dto.getBio() != null)        profile.setBio(dto.getBio());
+        if (dto.getBirthDate() != null)  profile.setBirthDate(dto.getBirthDate());
+        if (dto.getCountry() != null)    profile.setCountry(dto.getCountry());
+        if (dto.getDiscord() != null)    profile.setDiscord(dto.getDiscord().isBlank() ? null : dto.getDiscord().trim());
+        if (dto.getSteam() != null)      profile.setSteam(dto.getSteam().isBlank() ? null : dto.getSteam().trim());
+        if (dto.getTwitch() != null)     profile.setTwitch(dto.getTwitch().isBlank() ? null : dto.getTwitch().trim());
+        if (dto.getXbox() != null)       profile.setXbox(dto.getXbox().isBlank() ? null : dto.getXbox().trim());
+        if (dto.getPlaystation() != null) profile.setPlaystation(dto.getPlaystation().isBlank() ? null : dto.getPlaystation().trim());
+        if (dto.getNintendo() != null)   profile.setNintendo(dto.getNintendo().isBlank() ? null : dto.getNintendo().trim());
+
         if (dto.getPlatforms() != null) {
             validatePlatforms(dto.getPlatforms());
             profile.setPlatforms(dto.getPlatforms());
         }
         if (dto.getSkillLevel() != null) {
-            profile.setSkillLevel(parseEnum(SkillLevel.class, dto.getSkillLevel(), "skill level"));
+            profile.setSkillLevel(
+                    dto.getSkillLevel().isBlank() ? null
+                            : parseEnum(SkillLevel.class, dto.getSkillLevel(), "skill level")
+            );
         }
         if (dto.getPlayStyle() != null) {
-            profile.setPlayStyle(parseEnum(PlayStyle.class, dto.getPlayStyle(), "play style"));
-        }
-        if (dto.getLanguages() != null) {
-            profile.setLanguages(dto.getLanguages());
-        }
-        if (dto.getCountry() != null) {
-            profile.setCountry(dto.getCountry());
+            profile.setPlayStyle(
+                    dto.getPlayStyle().isBlank() ? null
+                            : parseEnum(PlayStyle.class, dto.getPlayStyle(), "play style")
+            );
         }
         if (dto.getRegion() != null) {
-            profile.setRegion(dto.getRegion());
+            profile.setRegion(
+                    dto.getRegion().isBlank() ? null
+                            : parseEnum(Region.class, dto.getRegion(), "region")
+            );
+        }
+        if (dto.getLanguages() != null) {
+            validateLanguages(dto.getLanguages());
+            profile.setLanguages(dto.getLanguages());
         }
 
         profileRepository.save(profile);
@@ -168,8 +191,25 @@ public class ProfileService {
                 .playStyle(profile.getPlayStyle() != null ? profile.getPlayStyle().name() : null)
                 .languages(profile.getLanguages())
                 .country(profile.getCountry())
-                .region(profile.getRegion())
+                .region(profile.getRegion() != null ? profile.getRegion().name() : null)
+                .discord(profile.getDiscord())
+                .steam(profile.getSteam())
+                .twitch(profile.getTwitch())
+                .xbox(profile.getXbox())
+                .playstation(profile.getPlaystation())
+                .nintendo(profile.getNintendo())
                 .build();
+    }
+
+    private void validateLanguages(java.util.List<String> languages) {
+        for (String lang : languages) {
+            try {
+                Language.valueOf(lang.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new ApiException(HttpStatus.BAD_REQUEST,
+                        "Invalid language code: " + lang + ". Allowed: " + java.util.Arrays.toString(Language.values()));
+            }
+        }
     }
 
     private void validatePlatforms(List<String> platforms) {
@@ -198,4 +238,3 @@ public class ProfileService {
         return dot >= 0 ? filename.substring(dot) : ".jpg";
     }
 }
-

@@ -13,6 +13,7 @@ const auth = useAuthStore()
 const chatStore = useChatStore()
 
 const searchQuery = ref('')
+const mobileView = ref<'sidebar' | 'chat'>('sidebar')
 
 onMounted(async () => {
   if (!auth.isLoggedIn) {
@@ -25,30 +26,45 @@ onMounted(async () => {
   const groupId = route.query.groupId
   if (groupId) {
     await chatStore.openGroupChatById(Number(groupId))
+    mobileView.value = 'chat'
   }
 })
 
 function onSelectChat(chat: ChatItem) {
   chatStore.openChat(chat)
+  mobileView.value = 'chat'
+}
+
+function goBackToSidebar() {
+  mobileView.value = 'sidebar'
 }
 </script>
 
 <template>
   <div class="chat-page">
     <div class="chat-layout">
-      <div class="chat-sidebar-panel ink-panel">
+      <div
+          class="chat-sidebar-panel ink-panel"
+          :class="{ 'mobile-hidden': mobileView === 'chat' }"
+      >
         <div class="chat-search-wrapper">
           <input
-            v-model="searchQuery"
-            type="text"
-            class="chat-search"
-            placeholder="Пошук чатів..."
+              v-model="searchQuery"
+              type="text"
+              class="chat-search"
+              placeholder="Пошук чатів..."
           />
         </div>
         <ChatSidebar :search="searchQuery" @select="onSelectChat" />
       </div>
 
-      <div class="chat-main-panel ink-panel">
+      <div
+          class="chat-main-panel ink-panel"
+          :class="{ 'mobile-hidden': mobileView === 'sidebar' }"
+      >
+        <button class="mobile-back-btn" @click="goBackToSidebar">
+          ← Всі чати
+        </button>
         <ChatWindow />
       </div>
     </div>
@@ -106,14 +122,46 @@ function onSelectChat(chat: ChatItem) {
   overflow: hidden;
 }
 
+.mobile-back-btn {
+  display: none;
+}
+
 @media (max-width: 768px) {
   .chat-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
   }
-  .chat-sidebar-panel {
+
+  .chat-sidebar-panel,
+  .chat-main-panel {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .mobile-hidden {
     display: none;
+  }
+
+  .mobile-back-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--yellow);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+
+  .mobile-back-btn:hover {
+    background: var(--yellow-glow);
   }
 }
 </style>
-
-

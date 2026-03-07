@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth'
 import { useFriendStore } from '../stores/friends'
 import { useChatStore } from '../stores/chat'
 import { timeAgo } from '../utils/helpers'
+import { API_BASE_URL } from '../config'
 import api from '../api/axios'
 
 const router = useRouter()
@@ -15,12 +16,10 @@ const chatStore = useChatStore()
 type Tab = 'friends' | 'incoming' | 'outgoing' | 'search'
 const activeTab = ref<Tab>('friends')
 
-const avatarBase = 'http://localhost:8080'
-
 function resolveAvatar(url: string | null): string {
-  if (!url) return avatarBase + '/avatars/default/avatar-1.png'
+  if (!url) return API_BASE_URL + '/avatars/default/avatar-1.png'
   if (url.startsWith('http')) return url
-  return avatarBase + url
+  return API_BASE_URL + url
 }
 
 onMounted(async () => {
@@ -48,7 +47,6 @@ function statusClass(status: string): string {
   return status?.toLowerCase() ?? 'offline'
 }
 
-/* ─── User search ─── */
 interface SearchResult {
   id: number
   email: string
@@ -94,7 +92,7 @@ function isFriend(userId: number): boolean {
 
 function hasPendingRequest(userId: number): boolean {
   return friendStore.outgoingRequests.some((r) => r.receiverId === userId)
-    || friendStore.incomingRequests.some((r) => r.senderId === userId)
+      || friendStore.incomingRequests.some((r) => r.senderId === userId)
 }
 
 async function addFriend(userId: number) {
@@ -118,33 +116,33 @@ async function openDm(email: string) {
 
       <div class="friends-tabs">
         <button
-          class="friends-tab"
-          :class="{ active: activeTab === 'friends' }"
-          @click="activeTab = 'friends'"
+            class="friends-tab"
+            :class="{ active: activeTab === 'friends' }"
+            @click="activeTab = 'friends'"
         >
           Мої друзі
           <span class="tab-count">{{ friendStore.friendCount }}</span>
         </button>
         <button
-          class="friends-tab"
-          :class="{ active: activeTab === 'incoming' }"
-          @click="activeTab = 'incoming'"
+            class="friends-tab"
+            :class="{ active: activeTab === 'incoming' }"
+            @click="activeTab = 'incoming'"
         >
           Вхідні запити
           <span v-if="friendStore.pendingCount > 0" class="tab-count pending">{{ friendStore.pendingCount }}</span>
         </button>
         <button
-          class="friends-tab"
-          :class="{ active: activeTab === 'outgoing' }"
-          @click="activeTab = 'outgoing'"
+            class="friends-tab"
+            :class="{ active: activeTab === 'outgoing' }"
+            @click="activeTab = 'outgoing'"
         >
           Надіслані
           <span class="tab-count">{{ friendStore.outgoingRequests.length }}</span>
         </button>
         <button
-          class="friends-tab"
-          :class="{ active: activeTab === 'search' }"
-          @click="activeTab = 'search'"
+            class="friends-tab"
+            :class="{ active: activeTab === 'search' }"
+            @click="activeTab = 'search'"
         >
           🔍 Знайти гравців
         </button>
@@ -224,11 +222,11 @@ async function openDm(email: string) {
       <div v-if="activeTab === 'search'" class="friends-list">
         <div class="search-bar">
           <input
-            v-model="searchQuery"
-            @input="onSearchInput"
-            type="text"
-            class="search-input"
-            placeholder="Пошук за іменем або email..."
+              v-model="searchQuery"
+              @input="onSearchInput"
+              type="text"
+              class="search-input"
+              placeholder="Пошук за іменем або email..."
           />
         </div>
 
@@ -528,5 +526,3 @@ a.friend-name:hover {
   border: 1px solid var(--border);
 }
 </style>
-
-
