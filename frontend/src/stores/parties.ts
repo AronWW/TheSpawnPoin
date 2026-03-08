@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../api/axios'
-import type { Party, CreatePartyRequest, SortOption, Page } from '../types'
+import type { Party, CreatePartyRequest, SortOption, Page, PartyInvite } from '../types'
 
 export const usePartyStore = defineStore('parties', () => {
   const parties = ref<Party[]>([])
@@ -159,6 +159,72 @@ export const usePartyStore = defineStore('parties', () => {
     }
   }
 
+  const incomingInvites = ref<PartyInvite[]>([])
+  const outgoingInvites = ref<PartyInvite[]>([])
+  const partyInvites = ref<PartyInvite[]>([])
+  const pendingInvite = ref<PartyInvite | null>(null)
+  const respondedInvites = ref<Map<number, 'accepted' | 'declined' | 'cancelled'>>(new Map())
+
+  async function sendInvite(partyId: number, userId: number): Promise<PartyInvite> {
+    const { data } = await api.post<PartyInvite>(`/parties/${partyId}/invite/${userId}`)
+    return data
+  }
+
+  async function acceptInvite(inviteId: number): Promise<void> {
+    await api.post(`/parties/invites/${inviteId}/accept`)
+    respondedInvites.value.set(inviteId, 'accepted')
+    pendingInvite.value = null
+    incomingInvites.value = incomingInvites.value.filter((i) => i.inviteId !== inviteId)
+  }
+
+  async function declineInvite(inviteId: number): Promise<void> {
+    await api.post(`/parties/invites/${inviteId}/decline`)
+    respondedInvites.value.set(inviteId, 'declined')
+    pendingInvite.value = null
+    incomingInvites.value = incomingInvites.value.filter((i) => i.inviteId !== inviteId)
+  }
+
+  async function cancelInvite(inviteId: number): Promise<void> {
+    await api.delete(`/parties/invites/${inviteId}`)
+    outgoingInvites.value = outgoingInvites.value.filter((i) => i.inviteId !== inviteId)
+    partyInvites.value = partyInvites.value.filter((i) => i.inviteId !== inviteId)
+  }
+
+  async function fetchIncomingInvites(): Promise<void> {
+    try {
+      const { data } = await api.get<PartyInvite[]>('/parties/invites/incoming')
+      incomingInvites.value = data
+    } catch {
+      incomingInvites.value = []
+    }
+  }
+
+  async function fetchOutgoingInvites(): Promise<void> {
+    try {
+      const { data } = await api.get<PartyInvite[]>('/parties/invites/outgoing')
+      outgoingInvites.value = data
+    } catch {
+      outgoingInvites.value = []
+    }
+  }
+
+  async function fetchPartyInvites(partyId: number): Promise<void> {
+    try {
+      const { data } = await api.get<PartyInvite[]>(`/parties/${partyId}/invites`)
+      partyInvites.value = data
+    } catch {
+      partyInvites.value = []
+    }
+  }
+
+  function showInvitePopup(invite: PartyInvite) {
+    pendingInvite.value = invite
+  }
+
+  function dismissInvitePopup() {
+    pendingInvite.value = null
+  }
+
   return {
     parties,
     loading,
@@ -186,5 +252,19 @@ export const usePartyStore = defineStore('parties', () => {
     myParties,
     myPartiesLoading,
     fetchMyParties,
+    incomingInvites,
+    outgoingInvites,
+    partyInvites,
+    pendingInvite,
+    respondedInvites,
+    sendInvite,
+    acceptInvite,
+    declineInvite,
+    cancelInvite,
+    fetchIncomingInvites,
+    fetchOutgoingInvites,
+    fetchPartyInvites,
+    showInvitePopup,
+    dismissInvitePopup,
   }
 })

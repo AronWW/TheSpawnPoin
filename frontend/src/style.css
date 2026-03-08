@@ -250,12 +250,15 @@ img { display: block; }
 .notif-panel {
   position: absolute;
   top: 54px; right: 0;
-  width: 320px;
+  width: 360px;
+  max-height: 480px;
   background: var(--panel);
   border: 2px solid var(--border);
   z-index: 200;
   transform-origin: top right;
   animation: dropIn 0.18s ease;
+  display: flex;
+  flex-direction: column;
 }
 @keyframes dropIn {
   from { opacity: 0; transform: scaleY(0.8); }
@@ -271,6 +274,11 @@ img { display: block; }
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
+}
+.notif-header-actions {
+  display: flex;
+  gap: 8px;
 }
 .notif-panel-header button {
   background: none;
@@ -280,16 +288,25 @@ img { display: block; }
   letter-spacing: 1px;
   text-transform: uppercase;
   font-family: var(--font-body);
+  cursor: pointer;
+  padding: 2px 4px;
 }
 .notif-panel-header button:hover { color: var(--yellow); }
+.notif-delete-all-btn:hover { color: var(--red) !important; }
+.notif-list {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .notif-item {
-  padding: 12px 16px;
+  padding: 10px 12px 10px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: flex-start;
   transition: background 0.1s;
   cursor: pointer;
+  position: relative;
 }
 .notif-item:hover { background: var(--panel-light); }
 .notif-item.unread { border-left: 3px solid var(--yellow); }
@@ -301,9 +318,87 @@ img { display: block; }
   font-size: 14px;
   flex-shrink: 0;
 }
+.notif-content { flex: 1; min-width: 0; }
 .notif-text { font-size: 13px; color: var(--gray-light); line-height: 1.4; }
 .notif-text strong { color: var(--white); }
 .notif-time { font-size: 11px; color: var(--gray); margin-top: 2px; }
+.notif-delete-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--gray);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+.notif-item:hover .notif-delete-btn { opacity: 1; }
+.notif-delete-btn:hover { color: var(--red); }
+.notif-load-more {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border);
+  color: var(--yellow-dim);
+  font-family: var(--font-body);
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.notif-load-more:hover { color: var(--yellow); background: var(--panel-light); }
+.notif-load-more:disabled { color: var(--gray); cursor: default; }
+
+.notif-invite-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.notif-accept-btn,
+.notif-decline-btn {
+  padding: 3px 10px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.notif-accept-btn {
+  background: var(--yellow);
+  border: 1px solid var(--yellow);
+  color: var(--black);
+}
+.notif-accept-btn:hover {
+  background: var(--yellow-dim);
+}
+.notif-decline-btn {
+  background: transparent;
+  border: 1px solid var(--red-dim);
+  color: var(--red);
+}
+.notif-decline-btn:hover {
+  background: var(--red);
+  color: #fff;
+}
+
+.notif-invite-status {
+  margin-top: 6px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  font-weight: 600;
+  color: var(--red);
+  padding: 3px 0;
+}
+.notif-invite-status.accepted {
+  color: #2ecc71;
+}
+.notif-invite-status.cancelled {
+  color: var(--gray);
+}
 
 /* ============================================================
    HERO SECTION

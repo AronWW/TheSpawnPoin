@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import TheNavbar from './components/TheNavbar.vue'
 import TheFooter from './components/TheFooter.vue'
 import BannedModal from './components/BannedModal.vue'
+import PartyInvitePopup from './components/PartyInvitePopup.vue'
 import { useAuthStore } from './stores/auth'
 import { useGlobalWebSocket } from './composables/useGlobalWebSocket'
 
@@ -25,4 +26,5 @@ useGlobalWebSocket()
   <TheNavbar v-if="showLayout" />
   <router-view />
   <TheFooter v-if="showLayout" />
+  <PartyInvitePopup />
 </template>

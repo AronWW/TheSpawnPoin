@@ -4,10 +4,12 @@ import com.thespawnpoint.backend.entity.social.Invite;
 import com.thespawnpoint.backend.entity.social.InviteStatus;
 import com.thespawnpoint.backend.entity.social.InviteType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -61,5 +63,15 @@ public interface InviteRepository extends JpaRepository<Invite, Long> {
 
     List<Invite> findByPartyRequestIdAndTypeAndStatus(
             Long partyRequestId, InviteType type, InviteStatus status);
+
+    @Modifying
+    @Query("""
+            UPDATE Invite i SET i.status = :expiredStatus, i.respondedAt = :now
+            WHERE i.type = 'PARTY_INVITE' AND i.status = 'PENDING'
+              AND i.createdAt < :cutoff
+            """)
+    int expireOldPartyInvites(@Param("cutoff") Instant cutoff,
+                              @Param("now") Instant now,
+                              @Param("expiredStatus") InviteStatus expiredStatus);
 }
 

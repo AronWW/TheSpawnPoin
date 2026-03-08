@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,7 @@ public class PartyService {
     private final GameRepository gameRepository;
     private final ProfileRepository profileRepository;
     private final ChatService chatService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public PartyRequestDTO createParty(User creator, CreatePartyRequestDTO dto) {
@@ -121,7 +123,9 @@ public class PartyService {
         }
 
         List<PartyMember> members = partyMemberRepository.findByPartyRequestId(partyId);
-        return toDTO(party, members);
+        PartyRequestDTO result = toDTO(party, members);
+        broadcastPartyUpdate(partyId);
+        return result;
     }
 
     @Transactional
@@ -164,7 +168,9 @@ public class PartyService {
             partyRequestRepository.save(party);
         }
 
-        return toDTO(party, remaining);
+        PartyRequestDTO result = toDTO(party, remaining);
+        broadcastPartyUpdate(partyId);
+        return result;
     }
 
     @Transactional
@@ -192,7 +198,9 @@ public class PartyService {
         }
 
         List<PartyMember> members = partyMemberRepository.findByPartyRequestId(partyId);
-        return toDTO(party, members);
+        PartyRequestDTO result = toDTO(party, members);
+        broadcastPartyUpdate(partyId);
+        return result;
     }
 
     public List<PartyRequestDTO> getOpenParties(Long gameId, String platform,
@@ -345,6 +353,17 @@ public class PartyService {
             return Enum.valueOf(enumClass, value.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid " + fieldName + ": " + value);
+        }
+    }
+
+    public void broadcastPartyUpdate(Long partyId) {
+        try {
+            PartyRequest party = partyRequestRepository.findById(partyId).orElse(null);
+            if (party == null) return;
+            List<PartyMember> members = partyMemberRepository.findByPartyRequestId(partyId);
+            PartyRequestDTO dto = toDTO(party, members);
+            messagingTemplate.convertAndSend("/topic/party/" + partyId, dto);
+        } catch (Exception ignored) {
         }
     }
 }

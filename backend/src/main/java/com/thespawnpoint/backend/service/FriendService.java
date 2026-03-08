@@ -57,7 +57,7 @@ public class FriendService {
         notificationService.send(
                 receiver,
                 NotificationType.FRIEND_REQUEST,
-                sender.getDisplayName() + " sent you a friend request",
+                sender.getDisplayName() + " надіслав вам запит у друзі",
                 saved.getId()
         );
     }
@@ -83,7 +83,7 @@ public class FriendService {
         notificationService.send(
                 invite.getSender(),
                 NotificationType.FRIEND_REQUEST,
-                currentUser.getDisplayName() + " accepted your friend request",
+                currentUser.getDisplayName() + " прийняв ваш запит у друзі",
                 invite.getId()
         );
     }

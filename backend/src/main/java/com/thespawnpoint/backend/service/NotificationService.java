@@ -48,6 +48,30 @@ public class NotificationService {
         broadcastUnreadCount(recipient);
     }
 
+    @Transactional
+    public void updateExistingOrSend(User recipient, NotificationType type, String newMessage, Long referenceId) {
+        var existing = notificationRepository
+                .findFirstByUserIdAndTypeAndReferenceIdOrderByCreatedAtDesc(
+                        recipient.getId(), type, referenceId);
+
+        if (existing.isPresent()) {
+            Notification notification = existing.get();
+            notification.setMessage(newMessage);
+            notification.setIsRead(false);
+            notificationRepository.save(notification);
+
+            NotificationDTO dto = toDTO(notification);
+            messagingTemplate.convertAndSendToUser(
+                    recipient.getEmail(),
+                    "/queue/notifications",
+                    dto
+            );
+            broadcastUnreadCount(recipient);
+        } else {
+            send(recipient, type, newMessage, referenceId);
+        }
+    }
+
     public Page<NotificationDTO> getUserNotifications(User user, int page, int size) {
         return notificationRepository
                 .findByUserIdOrderByCreatedAtDesc(user.getId(), PageRequest.of(page, size))

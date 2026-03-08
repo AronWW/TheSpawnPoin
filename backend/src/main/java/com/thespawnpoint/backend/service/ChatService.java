@@ -265,11 +265,11 @@ public class ChatService {
             return;
         }
 
+        chatParticipantRepository.deleteByChatIdAndUserId(chatId, user.getId());
+
         Chat chat = chatRepository.findById(chatId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Chat not found"));
         sendSystemMessage(chat, user.getDisplayName() + " left the party");
-
-        chatParticipantRepository.deleteByChatIdAndUserId(chatId, user.getId());
     }
 
     @Transactional

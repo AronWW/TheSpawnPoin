@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { usePartyStore } from '../stores/parties'
+import { useChatStore } from '../stores/chat'
+import { useStompClient } from '../composables/useStompClient'
+import InviteToPartyModal from '../components/InviteToPartyModal.vue'
 import type { Party } from '../types'
 import { skillLabel, timeAgo, gameEmoji } from '../utils/helpers'
 import { API_BASE_URL } from '../config'
@@ -11,12 +14,34 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const partyStore = usePartyStore()
+const chatStore = useChatStore()
+const stomp = useStompClient()
 
 const party = ref<Party | null>(null)
 const loading = ref(false)
 const error = ref('')
 const actionLoading = ref(false)
 const actionError = ref('')
+const showInviteModal = ref(false)
+
+let unsubParty: (() => void) | null = null
+
+function subscribeToPartyUpdates(partyId: number) {
+  unsubscribeFromParty()
+  unsubParty = stomp.subscribe(`/topic/party/${partyId}`, (frame) => {
+    try {
+      const updated: Party = JSON.parse(frame.body)
+      party.value = updated
+    } catch { }
+  })
+}
+
+function unsubscribeFromParty() {
+  if (unsubParty) {
+    unsubParty()
+    unsubParty = null
+  }
+}
 
 function resolveAvatar(url: string | null): string {
   if (!url) return API_BASE_URL + '/avatars/default/avatar-1.png'
@@ -44,12 +69,21 @@ const isFull = computed(() =>
     party.value ? party.value.currentMembers >= party.value.maxMembers : false
 )
 
+const canInvite = computed(() =>
+    isMember.value && party.value?.isOpen && !isFull.value
+)
+
+const partyMemberIds = computed(() =>
+    party.value?.members?.map((m) => m.userId) ?? []
+)
+
 async function loadParty() {
   const id = route.params.id as string
   loading.value = true
   error.value = ''
   try {
     party.value = await partyStore.fetchParty(Number(id))
+    subscribeToPartyUpdates(Number(id))
   } catch {
     error.value = 'Не вдалося завантажити лобі'
     party.value = null
@@ -77,6 +111,7 @@ async function handleLeave() {
   actionError.value = ''
   try {
     await partyStore.leaveParty(party.value.id)
+    chatStore.fetchChats()
     router.push('/search-parties')
   } catch (e: any) {
     actionError.value = e.message || 'Помилка'
@@ -117,7 +152,12 @@ function playStyleLabel(style: string | null): string {
 
 onMounted(loadParty)
 
+onUnmounted(() => {
+  unsubscribeFromParty()
+})
+
 watch(() => route.params.id, () => {
+  unsubscribeFromParty()
   loadParty()
 })
 </script>
@@ -237,6 +277,14 @@ watch(() => route.params.id, () => {
           </button>
 
           <button
+              v-if="canInvite"
+              class="btn-secondary btn-invite"
+              @click="showInviteModal = true"
+          >
+            ✉️ ЗАПРОСИТИ ГРАВЦЯ
+          </button>
+
+          <button
               v-if="isCreator && party.isOpen"
               class="btn-danger-outline"
               :disabled="actionLoading"
@@ -254,6 +302,14 @@ watch(() => route.params.id, () => {
             {{ actionLoading ? '...' : 'ПОКИНУТИ ЛОБІ' }}
           </button>
         </div>
+
+        <InviteToPartyModal
+            v-if="party"
+            :visible="showInviteModal"
+            :party-id="party.id"
+            :party-members="partyMemberIds"
+            @close="showInviteModal = false"
+        />
       </div>
     </div>
   </div>
@@ -579,6 +635,15 @@ watch(() => route.params.id, () => {
   transition: background 0.15s, color 0.15s;
 }
 .btn-secondary:hover {
+  background: var(--yellow);
+  color: var(--black);
+}
+
+.btn-invite {
+  border-color: var(--yellow-dim);
+  position: relative;
+}
+.btn-invite:hover {
   background: var(--yellow);
   color: var(--black);
 }

@@ -9,6 +9,7 @@ import com.thespawnpoint.backend.exception.ApiException;
 import com.thespawnpoint.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ public class PartyInviteService {
     private final ProfileRepository profileRepository;
     private final ChatService chatService;
     private final NotificationService notificationService;
+    private final PartyService partyService;
 
     @Transactional
     public PartyInviteDTO sendPartyInvite(User sender, Long partyId, Long receiverId) {
@@ -75,7 +77,7 @@ public class PartyInviteService {
         notificationService.send(
                 receiver,
                 NotificationType.PARTY_INVITE,
-                sender.getDisplayName() + " invited you to play " + party.getGame().getName(),
+                sender.getDisplayName() + " запрошує вас грати в " + party.getGame().getName(),
                 invite.getId()
         );
 
@@ -134,10 +136,12 @@ public class PartyInviteService {
             partyRequestRepository.save(party);
         }
 
+        partyService.broadcastPartyUpdate(party.getId());
+
         notificationService.send(
                 invite.getSender(),
                 NotificationType.PARTY_INVITE,
-                user.getDisplayName() + " accepted your invite to " + party.getGame().getName(),
+                user.getDisplayName() + " прийняв запрошення в " + party.getGame().getName(),
                 party.getId()
         );
     }
@@ -154,7 +158,7 @@ public class PartyInviteService {
             notificationService.send(
                     invite.getSender(),
                     NotificationType.PARTY_INVITE,
-                    user.getDisplayName() + " declined your invite to " + invite.getPartyRequest().getGame().getName(),
+                    user.getDisplayName() + " відхилив запрошення в " + invite.getPartyRequest().getGame().getName(),
                     invite.getPartyRequest().getId()
             );
         }
@@ -177,7 +181,18 @@ public class PartyInviteService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Invite is no longer pending");
         }
 
+        User receiver = invite.getReceiver();
+        String gameName = invite.getPartyRequest() != null
+                ? invite.getPartyRequest().getGame().getName() : "лобі";
+
         inviteRepository.delete(invite);
+
+        notificationService.updateExistingOrSend(
+                receiver,
+                NotificationType.PARTY_INVITE,
+                sender.getDisplayName() + " скасував запрошення в " + gameName,
+                inviteId
+        );
     }
 
     public List<PartyInviteDTO> getIncomingPartyInvites(User user) {
@@ -248,6 +263,13 @@ public class PartyInviteService {
                 .status(invite.getStatus().name())
                 .createdAt(invite.getCreatedAt())
                 .build();
+    }
+
+    @Scheduled(fixedRate = 60_000)
+    @Transactional
+    public void expireOldInvites() {
+        Instant cutoff = Instant.now().minusSeconds(30 * 60);
+        inviteRepository.expireOldPartyInvites(cutoff, Instant.now(), InviteStatus.DECLINED);
     }
 }
 

@@ -108,6 +108,57 @@ function handleNotifClick(n: import('../types').Notification) {
       router.push('/support'); break
   }
 }
+
+const respondedInviteIds = ref(new Set<number>())
+
+function isInviteActionable(n: import('../types').Notification): boolean {
+  if (!n.referenceId) return false
+  if (respondedInviteIds.value.has(n.referenceId)) return false
+  if (partyStore.respondedInvites.has(n.referenceId)) return false
+  return n.message.includes('запрошує вас')
+}
+
+function getInviteResponseLabel(n: import('../types').Notification): string | null {
+  if (!n.referenceId) return null
+  const fromStore = partyStore.respondedInvites.get(n.referenceId)
+  if (fromStore === 'accepted') return '✓ Ви прийняли запрошення'
+  if (fromStore === 'declined') return '✗ Ви відхилили запрошення'
+  if (fromStore === 'cancelled') return '⊘ Скасовано відправником'
+  if (respondedInviteIds.value.has(n.referenceId)) return '✓ Відповідь надіслано'
+  return null
+}
+
+async function handleAcceptInvite(n: import('../types').Notification) {
+  if (!n.referenceId) return
+  try {
+    await partyStore.fetchIncomingInvites()
+    const inv = partyStore.incomingInvites.find((i) => i.inviteId === n.referenceId)
+    const partyId = inv?.partyId
+
+    await partyStore.acceptInvite(n.referenceId)
+    respondedInviteIds.value.add(n.referenceId)
+    notifStore.markOneRead(n.id)
+    await partyStore.fetchMyParties()
+    notifOpen.value = false
+
+    if (partyId) {
+      router.push(`/party/${partyId}`)
+    } else if (partyStore.myParties[0]) {
+      router.push(`/party/${partyStore.myParties[0].id}`)
+    }
+  } catch {
+  }
+}
+
+async function handleDeclineInvite(n: import('../types').Notification) {
+  if (!n.referenceId) return
+  try {
+    await partyStore.declineInvite(n.referenceId)
+    respondedInviteIds.value.add(n.referenceId)
+    notifStore.markOneRead(n.id)
+  } catch {
+  }
+}
 </script>
 
 <template>
@@ -159,24 +210,58 @@ function handleNotifClick(n: import('../types').Notification) {
           <div v-if="notifOpen" class="notif-panel">
             <div class="notif-panel-header">
               <span>СПОВІЩЕННЯ</span>
-              <button @click="notifStore.markAllRead">Позначити прочитаними</button>
-            </div>
-
-            <div
-                v-for="n in notifStore.notifications"
-                :key="n.id"
-                class="notif-item"
-                :class="{ unread: !n.read }"
-                @click="handleNotifClick(n)"
-            >
-              <div class="notif-icon">{{ notificationIcon(n.type) }}</div>
-              <div>
-                <div class="notif-text">{{ n.message }}</div>
-                <div class="notif-time">{{ timeAgo(n.createdAt) }}</div>
+              <div class="notif-header-actions">
+                <button @click="notifStore.markAllRead" title="Позначити прочитаними">✓ Все</button>
+                <button v-if="notifStore.notifications.length" @click="notifStore.deleteAll" title="Видалити всі" class="notif-delete-all-btn">🗑 Все</button>
               </div>
             </div>
 
-            <div v-if="!notifStore.notifications.length" class="notif-empty">
+            <div class="notif-list">
+              <div
+                  v-for="n in notifStore.notifications"
+                  :key="n.id"
+                  class="notif-item"
+                  :class="{ unread: !n.read }"
+                  @click="handleNotifClick(n)"
+              >
+                <div class="notif-icon">{{ notificationIcon(n.type) }}</div>
+                <div class="notif-content">
+                  <div class="notif-text">{{ n.message }}</div>
+                  <div class="notif-time">{{ timeAgo(n.createdAt) }}</div>
+                  <div
+                      v-if="n.type === 'PARTY_INVITE' && n.referenceId && isInviteActionable(n)"
+                      class="notif-invite-actions"
+                      @click.stop
+                  >
+                    <button class="notif-accept-btn" @click="handleAcceptInvite(n)">Прийняти</button>
+                    <button class="notif-decline-btn" @click="handleDeclineInvite(n)">Відхилити</button>
+                  </div>
+                  <div
+                      v-else-if="n.type === 'PARTY_INVITE' && n.referenceId && getInviteResponseLabel(n)"
+                      class="notif-invite-status"
+                      :class="{
+                        accepted: partyStore.respondedInvites.get(n.referenceId!) === 'accepted',
+                        cancelled: partyStore.respondedInvites.get(n.referenceId!) === 'cancelled'
+                      }"
+                      @click.stop
+                  >
+                    {{ getInviteResponseLabel(n) }}
+                  </div>
+                </div>
+                <button class="notif-delete-btn" title="Видалити" @click.stop="notifStore.deleteOne(n.id)">✕</button>
+              </div>
+
+              <button
+                  v-if="notifStore.hasMore && notifStore.notifications.length > 0"
+                  class="notif-load-more"
+                  :disabled="notifStore.loading"
+                  @click.stop="notifStore.loadMore()"
+              >
+                {{ notifStore.loading ? 'Завантаження...' : 'Завантажити ще' }}
+              </button>
+            </div>
+
+            <div v-if="!notifStore.notifications.length && !notifStore.loading" class="notif-empty">
               Нових сповіщень немає
             </div>
           </div>

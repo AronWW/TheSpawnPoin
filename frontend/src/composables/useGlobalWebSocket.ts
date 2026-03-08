@@ -3,6 +3,7 @@ import { useAuthStore } from '../stores/auth'
 import { useNotificationStore } from '../stores/notifications'
 import { useFriendStore } from '../stores/friends'
 import { useChatStore } from '../stores/chat'
+import { usePartyStore } from '../stores/parties'
 import { useStompClient } from './useStompClient'
 import type { Notification, ChatMessage } from '../types'
 
@@ -12,6 +13,7 @@ export function useGlobalWebSocket() {
   const notifStore = useNotificationStore()
   const friendStore = useFriendStore()
   const chatStore = useChatStore()
+  const partyStore = usePartyStore()
   const stomp = useStompClient()
 
   let teardowns: (() => void)[] = []
@@ -26,7 +28,52 @@ export function useGlobalWebSocket() {
       stomp.subscribe('/user/queue/notifications', (frame) => {
         try {
           const notification: Notification = JSON.parse(frame.body)
-          notifStore.addNotification(notification)
+
+          const isCancelledInvite =
+            notification.type === 'PARTY_INVITE' &&
+            notification.referenceId &&
+            notification.message.includes('скасував запрошення')
+
+          if (isCancelledInvite && notification.referenceId) {
+            if (
+              partyStore.pendingInvite &&
+              partyStore.pendingInvite.inviteId === notification.referenceId
+            ) {
+              partyStore.dismissInvitePopup()
+            }
+            partyStore.respondedInvites.set(notification.referenceId, 'cancelled')
+
+            const existingIdx = notifStore.notifications.findIndex((n) => n.id === notification.id)
+            if (existingIdx !== -1) {
+              notifStore.notifications[existingIdx] = notification
+            } else {
+              const origIdx = notifStore.notifications.findIndex(
+                (n) => n.type === 'PARTY_INVITE' && n.referenceId === notification.referenceId
+              )
+              if (origIdx !== -1) {
+                notifStore.notifications[origIdx] = notification
+              } else {
+                notifStore.addNotification(notification)
+              }
+            }
+          } else {
+            notifStore.addNotification(notification)
+          }
+
+          if (
+            notification.type === 'PARTY_INVITE' &&
+            notification.referenceId &&
+            notification.message.includes('запрошує вас')
+          ) {
+            partyStore.fetchIncomingInvites().then(() => {
+              const inv = partyStore.incomingInvites.find(
+                (i) => i.inviteId === notification.referenceId
+              )
+              if (inv) {
+                partyStore.showInvitePopup(inv)
+              }
+            })
+          }
         } catch {  }
       })
     )
@@ -112,4 +159,3 @@ export function useGlobalWebSocket() {
     disconnectAndCleanup()
   })
 }
-

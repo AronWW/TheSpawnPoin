@@ -84,7 +84,6 @@ async function submitRequest() {
           </div>
         </template>
 
-        <!-- No request -->
         <div v-else class="unban-form">
           <textarea
             v-model="requestReason"

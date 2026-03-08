@@ -70,6 +70,21 @@ export interface Notification {
   createdAt: string
 }
 
+export interface PartyInvite {
+  inviteId: number
+  senderId: number
+  senderDisplayName: string
+  senderAvatarUrl: string | null
+  receiverId: number
+  receiverDisplayName: string
+  receiverAvatarUrl: string | null
+  partyId: number | null
+  gameName: string | null
+  gameImageUrl: string | null
+  status: string
+  createdAt: string
+}
+
 export interface Page<T> {
   content: T[]
 
