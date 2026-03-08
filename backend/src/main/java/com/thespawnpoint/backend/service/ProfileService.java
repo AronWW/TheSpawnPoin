@@ -3,8 +3,11 @@ package com.thespawnpoint.backend.service;
 import com.thespawnpoint.backend.dto.ProfileDTO;
 import com.thespawnpoint.backend.dto.UpdateProfileDTO;
 import com.thespawnpoint.backend.entity.user.*;
+import com.thespawnpoint.backend.entity.party.PartyMember;
+import com.thespawnpoint.backend.entity.party.PartyStatus;
 import com.thespawnpoint.backend.exception.ApiException;
 import com.thespawnpoint.backend.repository.ProfileRepository;
+import com.thespawnpoint.backend.repository.PartyMemberRepository;
 import com.thespawnpoint.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +31,7 @@ public class ProfileService {
 
     private final ProfileRepository profileRepository;
     private final UserRepository userRepository;
+    private final PartyMemberRepository partyMemberRepository;
 
     @Value("${app.upload.dir:uploads/avatars}")
     private String uploadDir;
@@ -50,6 +54,10 @@ public class ProfileService {
             "/avatars/default/avatar-8.png",
             "/avatars/default/avatar-9.png",
             "/avatars/default/avatar-10.png"
+    );
+
+    private static final Set<String> ALLOWED_BANNERS = Set.of(
+            "banner-1", "banner-2", "banner-3", "banner-4", "banner-5"
     );
 
     public ProfileDTO getMyProfile(User user) {
@@ -122,6 +130,15 @@ public class ProfileService {
             validateLanguages(dto.getLanguages());
             profile.setLanguages(dto.getLanguages());
         }
+        if (dto.getBannerUrl() != null) {
+            if (dto.getBannerUrl().isBlank()) {
+                profile.setBannerUrl(null);
+            } else if (ALLOWED_BANNERS.contains(dto.getBannerUrl())) {
+                profile.setBannerUrl(dto.getBannerUrl());
+            } else {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid banner: " + dto.getBannerUrl());
+            }
+        }
 
         profileRepository.save(profile);
         return toDTO(profile, user);
@@ -182,6 +199,8 @@ public class ProfileService {
     }
 
     private ProfileDTO toDTO(Profile profile, User user) {
+        String derivedStatus = deriveStatus(user);
+
         return ProfileDTO.builder()
                 .userId(user.getId())
                 .email(user.getEmail())
@@ -202,7 +221,31 @@ public class ProfileService {
                 .xbox(profile.getXbox())
                 .playstation(profile.getPlaystation())
                 .nintendo(profile.getNintendo())
+                .bannerUrl(profile.getBannerUrl())
+                .status(derivedStatus)
+                .lastSeen(user.getLastSeen())
+                .createdAt(user.getCreatedAt())
                 .build();
+    }
+
+    private String deriveStatus(User user) {
+        if (user.getStatus() != User.Status.ONLINE) {
+            return "OFFLINE";
+        }
+        List<PartyMember> memberships = partyMemberRepository.findByUserId(user.getId());
+        boolean inGame = false;
+        boolean inLobby = false;
+        for (PartyMember pm : memberships) {
+            PartyStatus ps = pm.getPartyRequest().getStatus();
+            if (ps == PartyStatus.IN_GAME) {
+                inGame = true;
+            } else if (ps == PartyStatus.OPEN || ps == PartyStatus.FULL) {
+                inLobby = true;
+            }
+        }
+        if (inGame) return "IN_GAME";
+        if (inLobby) return "IN_LOBBY";
+        return "ONLINE";
     }
 
     private void validateLanguages(java.util.List<String> languages) {

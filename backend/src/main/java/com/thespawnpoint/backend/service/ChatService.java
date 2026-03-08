@@ -273,6 +273,19 @@ public class ChatService {
     }
 
     @Transactional
+    public void removeParticipantById(Long chatId, Long userId) {
+        if (!chatParticipantRepository.existsByChatIdAndUserId(chatId, userId)) {
+            return;
+        }
+
+        chatParticipantRepository.deleteByChatIdAndUserId(chatId, userId);
+
+        Chat chat = chatRepository.findById(chatId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Chat not found"));
+        sendSystemMessage(chat, "A member was removed from the party");
+    }
+
+    @Transactional
     public void deleteChat(Long chatId) {
         chatRepository.deleteById(chatId);
     }

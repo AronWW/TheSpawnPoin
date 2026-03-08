@@ -38,7 +38,7 @@ public class AdminService {
                 .totalUsers(userRepository.count())
                 .bannedUsers(userRepository.countByBannedTrue())
                 .totalGames(gameRepository.count())
-                .openParties(partyRequestRepository.countByIsOpen(true))
+                .openParties(partyRequestRepository.countByStatus(com.thespawnpoint.backend.entity.party.PartyStatus.OPEN))
                 .pendingSuggestions(gameSuggestionRepository.countByStatus(SuggestionStatus.PENDING))
                 .openReports(userReportRepository.countByStatus(ReportStatus.OPEN))
                 .openTickets(supportTicketRepository.countByStatus(TicketStatus.OPEN))
@@ -160,7 +160,7 @@ public class AdminService {
     }
 
     public Page<AdminActivePartyDTO> getActiveParties(Pageable pageable) {
-        return partyRequestRepository.findByIsOpenOrderByCreatedAtDesc(true, pageable)
+        return partyRequestRepository.findByStatusOrderByCreatedAtDesc(com.thespawnpoint.backend.entity.party.PartyStatus.OPEN, pageable)
                 .map(this::toAdminActivePartyDTO);
     }
 
@@ -194,7 +194,7 @@ public class AdminService {
                 .creatorDisplayName(p.getCreator().getDisplayName())
                 .currentMembers(count)
                 .maxMembers(p.getMaxMembers())
-                .language(p.getLanguage())
+                .languages(p.getLanguages())
                 .createdAt(p.getCreatedAt())
                 .build();
     }

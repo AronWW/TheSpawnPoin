@@ -143,9 +143,10 @@ function goToParty() {
             >
               {{ p }}
             </span>
-            <span v-if="heroParty.isOpen" class="tag green">🟢 Відкрите</span>
-            <span v-if="heroParty.language" class="tag">
-              {{ heroParty.language }}
+            <span v-if="heroParty.status === 'OPEN'" class="tag green">🟢 Відкрите</span>
+            <span v-else-if="heroParty.status === 'IN_GAME'" class="tag blue">🎮 В грі</span>
+            <span v-for="lang in (heroParty.languages || [])" :key="lang" class="tag">
+              {{ lang }}
             </span>
           </div>
 

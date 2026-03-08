@@ -15,7 +15,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/parties")
@@ -40,14 +39,10 @@ public class PartyController {
     }
 
     @PostMapping("/{id}/leave")
-    public ResponseEntity<?> leaveParty(
+    public ResponseEntity<PartyRequestDTO> leaveParty(
             @PathVariable Long id,
             @AuthenticationPrincipal User user) {
-        PartyRequestDTO result = partyService.leaveParty(user, id);
-        if (result == null) {
-            return ResponseEntity.ok(Map.of("message", "Party deleted (no members left)"));
-        }
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(partyService.leaveParty(user, id));
     }
 
     @PostMapping("/{id}/close")
@@ -57,14 +52,35 @@ public class PartyController {
         return ResponseEntity.ok(partyService.closeParty(user, id));
     }
 
+    @PostMapping("/{id}/start")
+    public ResponseEntity<PartyRequestDTO> startGame(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(partyService.startGame(user, id));
+    }
+
+    @PostMapping("/{id}/complete")
+    public ResponseEntity<PartyRequestDTO> completeParty(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(partyService.completeParty(user, id));
+    }
+
+    @PostMapping("/{partyId}/kick/{userId}")
+    public ResponseEntity<PartyRequestDTO> kickMember(
+            @PathVariable Long partyId,
+            @PathVariable Long userId,
+            @AuthenticationPrincipal User creator) {
+        return ResponseEntity.ok(partyService.kickMember(creator, partyId, userId));
+    }
+
     @GetMapping
     public ResponseEntity<List<PartyRequestDTO>> getOpenParties(
             @RequestParam(required = false) Long gameId,
             @RequestParam(required = false) String platform,
             @RequestParam(required = false) String skillLevel,
-            @RequestParam(required = false) String playStyle,
-            @RequestParam(required = false) String language) {
-        return ResponseEntity.ok(partyService.getOpenParties(gameId, platform, skillLevel, playStyle, language));
+            @RequestParam(required = false) String playStyle) {
+        return ResponseEntity.ok(partyService.getOpenParties(gameId, platform, skillLevel, playStyle));
     }
 
     @GetMapping("/{id}")
@@ -78,11 +94,11 @@ public class PartyController {
             @RequestParam(required = false) String platform,
             @RequestParam(required = false) String skillLevel,
             @RequestParam(required = false) String playStyle,
-            @RequestParam(required = false) String language,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "8") int size) {
         return ResponseEntity.ok(partyService.getOpenPartiesPaged(
-                gameId, platform, skillLevel, playStyle, language,
+                gameId, platform, skillLevel, playStyle, q,
                 PageRequest.of(page, size)));
     }
 
@@ -90,6 +106,14 @@ public class PartyController {
     public ResponseEntity<List<PartyRequestDTO>> getMyParties(
             @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(partyService.getMyParties(user));
+    }
+
+    @GetMapping("/history")
+    public ResponseEntity<Page<PartyRequestDTO>> getPartyHistory(
+            @AuthenticationPrincipal User user,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(partyService.getPartyHistory(user, PageRequest.of(page, size)));
     }
 
     @PostMapping("/{partyId}/invite/{userId}")

@@ -58,9 +58,14 @@ const isMember = computed(() => {
   return party.value.members.some((m) => m.userId === auth.user!.id)
 })
 
+const isActive = computed(() => {
+  if (!party.value) return false
+  return ['OPEN', 'FULL', 'IN_GAME'].includes(party.value.status)
+})
+
 const canJoin = computed(() =>
     auth.isLoggedIn &&
-    party.value?.isOpen &&
+    party.value?.status === 'OPEN' &&
     !isMember.value &&
     party.value.currentMembers < party.value.maxMembers
 )
@@ -70,12 +75,44 @@ const isFull = computed(() =>
 )
 
 const canInvite = computed(() =>
-    isMember.value && party.value?.isOpen && !isFull.value
+    isMember.value && party.value?.status === 'OPEN' && !isFull.value
+)
+
+const canStart = computed(() =>
+    isCreator.value && (party.value?.status === 'OPEN' || party.value?.status === 'FULL')
+)
+
+const canComplete = computed(() =>
+    isCreator.value && party.value?.status === 'IN_GAME'
 )
 
 const partyMemberIds = computed(() =>
     party.value?.members?.map((m) => m.userId) ?? []
 )
+
+const statusLabel = computed(() => {
+  if (!party.value) return ''
+  const map: Record<string, string> = {
+    OPEN: 'ВІДКРИТО',
+    FULL: 'ЗАПОВНЕНО',
+    IN_GAME: 'В ГРІ',
+    COMPLETED: 'ЗАВЕРШЕНО',
+    CANCELLED: 'СКАСОВАНО',
+  }
+  return map[party.value.status] ?? party.value.status
+})
+
+const statusClass = computed(() => {
+  if (!party.value) return ''
+  const map: Record<string, string> = {
+    OPEN: 'open',
+    FULL: 'full',
+    IN_GAME: 'in-game',
+    COMPLETED: 'completed',
+    CANCELLED: 'closed',
+  }
+  return map[party.value.status] ?? ''
+})
 
 async function loadParty() {
   const id = route.params.id as string
@@ -134,6 +171,45 @@ async function handleClose() {
   }
 }
 
+async function handleStartGame() {
+  if (!party.value) return
+  actionLoading.value = true
+  actionError.value = ''
+  try {
+    party.value = await partyStore.startGame(party.value.id)
+  } catch (e: any) {
+    actionError.value = e.message || 'Помилка'
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function handleComplete() {
+  if (!party.value) return
+  actionLoading.value = true
+  actionError.value = ''
+  try {
+    party.value = await partyStore.completeParty(party.value.id)
+  } catch (e: any) {
+    actionError.value = e.message || 'Помилка'
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function handleKick(userId: number) {
+  if (!party.value) return
+  actionLoading.value = true
+  actionError.value = ''
+  try {
+    party.value = await partyStore.kickMember(party.value.id, userId)
+  } catch (e: any) {
+    actionError.value = e.message || 'Помилка'
+  } finally {
+    actionLoading.value = false
+  }
+}
+
 function goToChat() {
   if (party.value?.chatId) {
     router.push(`/chat?groupId=${party.value.chatId}`)
@@ -148,6 +224,20 @@ function playStyleLabel(style: string | null): string {
     COMPETITIVE: 'Competitive',
   }
   return map[style] ?? style
+}
+
+function regionLabel(region: string | null): string {
+  if (!region) return ''
+  const map: Record<string, string> = {
+    EUROPE: '🌍 Європа',
+    NORTH_AMERICA: '🌎 Пн. Америка',
+    SOUTH_AMERICA: '🌎 Пд. Америка',
+    ASIA: '🌏 Азія',
+    MIDDLE_EAST: '🌍 Близький Схід',
+    AFRICA: '🌍 Африка',
+    OCEANIA: '🌏 Океанія',
+  }
+  return map[region] ?? region
 }
 
 onMounted(loadParty)
@@ -197,10 +287,14 @@ watch(() => route.params.id, () => {
               <div class="detail-time">{{ timeAgo(party.createdAt) }}</div>
             </div>
             <div class="detail-status">
-              <span class="status-badge" :class="party.isOpen ? 'open' : 'closed'">
-                {{ party.isOpen ? 'ВІДКРИТО' : 'ЗАКРИТО' }}
+              <span class="status-badge" :class="statusClass">
+                {{ statusLabel }}
               </span>
             </div>
+          </div>
+
+          <div v-if="party.title" class="detail-title">
+            <h2>{{ party.title }}</h2>
           </div>
 
           <div v-if="party.description" class="detail-description">
@@ -209,11 +303,13 @@ watch(() => route.params.id, () => {
 
           <div class="detail-tags">
             <span v-for="p in party.platform" :key="p" class="platform-tag">{{ p }}</span>
-            <span v-if="party.language" class="tag">{{ party.language }}</span>
+            <span v-for="lang in (party.languages || [])" :key="lang" class="tag">{{ lang }}</span>
+            <span v-if="party.region" class="tag tag-region">{{ regionLabel(party.region) }}</span>
             <span v-if="party.skillLevel" class="skill-badge" :class="party.skillLevel.toLowerCase()">
               {{ skillLabel(party.skillLevel) }}
             </span>
             <span v-if="party.playStyle" class="tag">{{ playStyleLabel(party.playStyle) }}</span>
+            <span v-for="tag in (party.tags || [])" :key="tag" class="tag tag-custom">{{ tag }}</span>
           </div>
         </div>
 
@@ -235,6 +331,13 @@ watch(() => route.params.id, () => {
                     <span v-if="party.members?.[i - 1]?.isCreator" class="creator-tag">ХОСТ</span>
                   </div>
                 </router-link>
+                <button
+                    v-if="isCreator && isActive && !party.members?.[i - 1]?.isCreator"
+                    class="kick-btn"
+                    :disabled="actionLoading"
+                    @click="handleKick(party.members?.[i - 1]?.userId ?? 0)"
+                    title="Кікнути гравця"
+                >✕</button>
               </template>
               <template v-else>
                 <div class="empty-slot-content">
@@ -250,57 +353,97 @@ watch(() => route.params.id, () => {
           {{ actionError }}
         </div>
 
-        <div class="detail-actions">
-          <button
-              v-if="canJoin"
-              class="btn-primary"
-              :disabled="actionLoading"
-              @click="handleJoin"
-          >
-            {{ actionLoading ? 'ПРИЄДНАННЯ...' : '⚡ ПРИЄДНАТИСЯ' }}
-          </button>
+        <div class="detail-actions ink-panel">
+          <div class="actions-row actions-primary">
+            <button
+                v-if="canJoin"
+                class="action-btn primary"
+                :disabled="actionLoading"
+                @click="handleJoin"
+            >
+              <span class="action-icon">⚡</span>
+              {{ actionLoading ? 'ПРИЄДНАННЯ...' : 'ПРИЄДНАТИСЯ' }}
+            </button>
 
-          <div v-else-if="!isMember && isFull && party.isOpen" class="full-label">
-            Лобі заповнене
+            <div v-else-if="!isMember && party.status === 'FULL'" class="status-info">
+              <span class="status-info-icon">🔒</span> Лобі заповнене
+            </div>
+
+            <div v-else-if="!isMember && party.status === 'IN_GAME'" class="status-info">
+              <span class="status-info-icon">🎮</span> Гра вже йде
+            </div>
+
+            <div v-else-if="!isMember && (party.status === 'COMPLETED' || party.status === 'CANCELLED')" class="status-info">
+              <span class="status-info-icon">{{ party.status === 'COMPLETED' ? '✅' : '❌' }}</span>
+              {{ party.status === 'COMPLETED' ? 'Гру завершено' : 'Лобі скасовано' }}
+            </div>
+
+            <router-link v-else-if="!auth.isLoggedIn && party.status === 'OPEN'" to="/login" class="action-btn primary">
+              <span class="action-icon">🔑</span> УВІЙТИ ДЛЯ ПРИЄДНАННЯ
+            </router-link>
+
+            <button
+                v-if="canStart"
+                class="action-btn start"
+                :disabled="actionLoading"
+                @click="handleStartGame"
+            >
+              <span class="action-icon">▶</span>
+              {{ actionLoading ? '...' : 'ПОЧАТИ ГРУ' }}
+            </button>
+
+            <button
+                v-if="canComplete"
+                class="action-btn complete"
+                :disabled="actionLoading"
+                @click="handleComplete"
+            >
+              <span class="action-icon">✓</span>
+              {{ actionLoading ? '...' : 'ЗАВЕРШИТИ ГРУ' }}
+            </button>
           </div>
 
-          <router-link v-else-if="!auth.isLoggedIn && party.isOpen" to="/login" class="btn-primary">
-            УВІЙТИ ДЛЯ ПРИЄДНАННЯ
-          </router-link>
+          <div v-if="isMember && isActive" class="actions-row actions-secondary">
+            <button
+                v-if="party.chatId"
+                class="action-btn ghost"
+                @click="goToChat"
+            >
+              <span class="action-icon">💬</span> ЧАТ
+            </button>
 
-          <button
-              v-if="isMember && party.chatId"
-              class="btn-secondary"
-              @click="goToChat"
-          >
-            💬 ГРУПОВИЙ ЧАТ
-          </button>
+            <button
+                v-if="canInvite"
+                class="action-btn ghost"
+                @click="showInviteModal = true"
+            >
+              <span class="action-icon">✉️</span> ЗАПРОСИТИ
+            </button>
 
-          <button
-              v-if="canInvite"
-              class="btn-secondary btn-invite"
-              @click="showInviteModal = true"
-          >
-            ✉️ ЗАПРОСИТИ ГРАВЦЯ
-          </button>
+            <button
+                v-if="isCreator"
+                class="action-btn danger-ghost"
+                :disabled="actionLoading"
+                @click="handleClose"
+            >
+              {{ actionLoading ? '...' : 'ЗАКРИТИ' }}
+            </button>
 
-          <button
-              v-if="isCreator && party.isOpen"
-              class="btn-danger-outline"
-              :disabled="actionLoading"
-              @click="handleClose"
-          >
-            {{ actionLoading ? '...' : 'ЗАКРИТИ ЛОБІ' }}
-          </button>
+            <button
+                v-if="!isCreator"
+                class="action-btn danger-ghost"
+                :disabled="actionLoading"
+                @click="handleLeave"
+            >
+              {{ actionLoading ? '...' : 'ПОКИНУТИ' }}
+            </button>
+          </div>
 
-          <button
-              v-if="isMember && !isCreator"
-              class="btn-danger"
-              :disabled="actionLoading"
-              @click="handleLeave"
-          >
-            {{ actionLoading ? '...' : 'ПОКИНУТИ ЛОБІ' }}
-          </button>
+          <div v-if="!isActive && isMember && party.chatId" class="actions-row">
+            <button class="action-btn ghost" @click="goToChat">
+              <span class="action-icon">💬</span> ПЕРЕГЛЯНУТИ ЧАТ
+            </button>
+          </div>
         </div>
 
         <InviteToPartyModal
@@ -441,6 +584,21 @@ watch(() => route.params.id, () => {
   color: #2ecc71;
   background: rgba(39, 174, 96, 0.1);
 }
+.status-badge.full {
+  border-color: rgba(245, 197, 24, 0.5);
+  color: var(--yellow);
+  background: rgba(245, 197, 24, 0.1);
+}
+.status-badge.in-game {
+  border-color: rgba(52, 152, 219, 0.5);
+  color: #3498db;
+  background: rgba(52, 152, 219, 0.1);
+}
+.status-badge.completed {
+  border-color: rgba(149, 165, 166, 0.5);
+  color: #95a5a6;
+  background: rgba(149, 165, 166, 0.1);
+}
 .status-badge.closed {
   border-color: var(--red-dim);
   color: var(--red);
@@ -456,6 +614,22 @@ watch(() => route.params.id, () => {
   line-height: 1.6;
   font-style: italic;
   white-space: pre-wrap;
+}
+
+.detail-title {
+  margin-bottom: 8px;
+}
+.detail-title h2 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 1px;
+  color: var(--white);
+}
+
+.tag-custom {
+  background: rgba(245, 197, 24, 0.06);
+  border-color: var(--yellow-dim);
+  color: var(--yellow-dim);
 }
 
 .detail-tags {
@@ -538,6 +712,36 @@ watch(() => route.params.id, () => {
   border-color: var(--yellow-dim);
 }
 
+.member-slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kick-btn {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--red-dim);
+  color: var(--red);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.kick-btn:hover:not(:disabled) {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+}
+.kick-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 .member-info {
   display: flex;
   align-items: center;
@@ -598,99 +802,118 @@ watch(() => route.params.id, () => {
 }
 
 .detail-actions {
+  padding: 20px 28px;
   display: flex;
+  flex-direction: column;
   gap: 12px;
+}
+
+.actions-row {
+  display: flex;
+  gap: 10px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
-.btn-primary {
+.action-btn {
   font-family: var(--font-display);
   letter-spacing: 2px;
-  font-size: 16px;
-  padding: 12px 32px;
-  border: 2px solid var(--yellow);
-  background: var(--yellow);
-  color: var(--black);
-  text-transform: uppercase;
-  transition: background 0.15s;
-  display: inline-block;
-}
-.btn-primary:hover:not(:disabled) {
-  background: var(--yellow-dim);
-}
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  font-family: var(--font-display);
-  letter-spacing: 2px;
-  font-size: 14px;
+  font-size: 13px;
   padding: 10px 24px;
-  border: 2px solid var(--yellow);
+  border: 2px solid transparent;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.action-icon {
+  font-size: 14px;
+}
+
+/* Primary — yellow filled */
+.action-btn.primary {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: var(--black);
+}
+.action-btn.primary:hover:not(:disabled) {
   background: transparent;
   color: var(--yellow);
-  text-transform: uppercase;
-  transition: background 0.15s, color 0.15s;
-}
-.btn-secondary:hover {
-  background: var(--yellow);
-  color: var(--black);
 }
 
-.btn-invite {
-  border-color: var(--yellow-dim);
-  position: relative;
+/* Start Game — blue */
+.action-btn.start {
+  background: rgba(52, 152, 219, 0.15);
+  border-color: #3498db;
+  color: #3498db;
 }
-.btn-invite:hover {
-  background: var(--yellow);
-  color: var(--black);
-}
-
-.btn-danger {
-  font-family: var(--font-display);
-  letter-spacing: 2px;
-  font-size: 14px;
-  padding: 10px 24px;
-  border: 2px solid var(--red);
-  background: var(--red);
+.action-btn.start:hover:not(:disabled) {
+  background: #3498db;
   color: #fff;
-  text-transform: uppercase;
-  transition: background 0.15s;
 }
-.btn-danger:hover:not(:disabled) {
-  background: var(--red-dim);
+
+/* Complete — green */
+.action-btn.complete {
+  background: rgba(39, 174, 96, 0.15);
+  border-color: #27ae60;
+  color: #2ecc71;
 }
-.btn-danger:disabled {
-  opacity: 0.5;
+.action-btn.complete:hover:not(:disabled) {
+  background: #27ae60;
+  color: #fff;
+}
+
+/* Ghost — outlined yellow */
+.action-btn.ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--gray-light);
+}
+.action-btn.ghost:hover {
+  border-color: var(--yellow-dim);
+  color: var(--yellow);
+}
+
+/* Danger ghost — outlined red */
+.action-btn.danger-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--gray);
+}
+.action-btn.danger-ghost:hover:not(:disabled) {
+  border-color: var(--red-dim);
+  color: var(--red);
+}
+
+.action-btn:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-.btn-danger-outline {
+.status-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--font-display);
-  letter-spacing: 2px;
-  font-size: 14px;
-  padding: 10px 24px;
-  border: 2px solid var(--red-dim);
-  background: transparent;
-  color: var(--red);
-  text-transform: uppercase;
-  transition: background 0.15s, color 0.15s;
-}
-.btn-danger-outline:hover:not(:disabled) {
-  background: var(--red);
-  color: #fff;
-}
-
-.full-label {
-  font-family: var(--font-display);
-  font-size: 14px;
+  font-size: 13px;
   letter-spacing: 2px;
   color: var(--gray);
-  padding: 10px 24px;
+  padding: 10px 20px;
   border: 2px dashed var(--border);
   text-transform: uppercase;
+}
+.status-info-icon {
+  font-size: 16px;
+}
+
+.tag-region {
+  background: rgba(52, 152, 219, 0.08);
+  border-color: rgba(52, 152, 219, 0.3);
+  color: #5dade2;
 }
 
 .empty-state {
@@ -741,12 +964,13 @@ watch(() => route.params.id, () => {
   .detail-header-top {
     flex-direction: column;
   }
-  .detail-actions {
+  .actions-row {
     flex-direction: column;
   }
-  .detail-actions button,
-  .detail-actions a {
+  .action-btn,
+  .status-info {
     width: 100%;
+    justify-content: center;
     text-align: center;
   }
 }

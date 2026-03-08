@@ -23,14 +23,18 @@ public class PartyRequestDTO {
     private Integer maxMembers;
     private Integer currentMembers;
     private Boolean isOpen;
+    private String status;
 
+    private String title;
     private String description;
     private Instant eventTime;
 
     private List<String> platform;
-    private String language;
+    private List<String> languages;
     private String skillLevel;
     private String playStyle;
+    private List<String> tags;
+    private String region;
 
     private List<PartyMemberDTO> members;
 

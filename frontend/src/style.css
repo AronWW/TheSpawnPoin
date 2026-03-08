@@ -21,6 +21,9 @@
   --red:         #c0392b;
   --red-dim:     #8e2218;
 
+  --green:       #2ecc71;
+  --green-dim:   rgba(46, 204, 113, 0.12);
+
   --white:       #f0ead6;
   --gray:        #8a8a9a;
   --gray-light:  #b0b0c0;
@@ -1770,8 +1773,9 @@ img { display: block; }
   .auth-side { display: none; }
 }
 @media (max-width: 768px) {
-  .navbar { padding: 0 20px; }
+  .navbar { padding: 0 16px; }
   .nav-links { display: none; }
+  .nav-divider { display: none; }
   .hero-inner { padding: 60px 24px 40px; }
   .main { padding: 0 24px 60px; }
   .footer { padding: 24px; flex-direction: column; gap: 12px; text-align: center; }

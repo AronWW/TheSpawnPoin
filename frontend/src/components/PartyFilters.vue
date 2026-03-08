@@ -11,7 +11,6 @@ watch(
     () => partyStore.filterGameId,
     () => partyStore.filterPlatform,
     () => partyStore.filterSkillLevel,
-    () => partyStore.filterLanguage,
   ],
   () => {
     partyStore.fetchParties()

@@ -38,8 +38,8 @@ public class PartyInviteService {
         PartyRequest party = partyRequestRepository.findById(partyId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Party not found"));
 
-        if (!party.getIsOpen()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Party is closed");
+        if (party.getStatus() != com.thespawnpoint.backend.entity.party.PartyStatus.OPEN) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Лобі не приймає нових гравців");
         }
 
         if (!partyMemberRepository.existsByPartyRequestIdAndUserId(partyId, sender.getId())) {
@@ -94,11 +94,11 @@ public class PartyInviteService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Party no longer exists");
         }
 
-        if (!party.getIsOpen()) {
+        if (party.getStatus() != com.thespawnpoint.backend.entity.party.PartyStatus.OPEN) {
             invite.setStatus(InviteStatus.DECLINED);
             invite.setRespondedAt(Instant.now());
             inviteRepository.save(invite);
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Party is closed");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Лобі не приймає нових гравців");
         }
 
         int currentCount = partyMemberRepository.countByPartyRequestId(party.getId());
@@ -106,7 +106,7 @@ public class PartyInviteService {
             invite.setStatus(InviteStatus.DECLINED);
             invite.setRespondedAt(Instant.now());
             inviteRepository.save(invite);
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Party is full");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Лобі заповнене");
         }
 
         if (partyMemberRepository.existsActivePartyForUser(user.getId())) {
@@ -132,6 +132,7 @@ public class PartyInviteService {
 
         currentCount++;
         if (currentCount >= party.getMaxMembers()) {
+            party.setStatus(com.thespawnpoint.backend.entity.party.PartyStatus.FULL);
             party.setIsOpen(false);
             partyRequestRepository.save(party);
         }

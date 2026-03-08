@@ -2,7 +2,9 @@ package com.thespawnpoint.backend.controller;
 
 import com.thespawnpoint.backend.dto.ProfileDTO;
 import com.thespawnpoint.backend.dto.UpdateProfileDTO;
+import com.thespawnpoint.backend.dto.UserStatsDTO;
 import com.thespawnpoint.backend.entity.user.User;
+import com.thespawnpoint.backend.service.PartyService;
 import com.thespawnpoint.backend.service.ProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import java.util.Map;
 public class ProfileController {
 
     private final ProfileService profileService;
+    private final PartyService partyService;
 
     @GetMapping("/me")
     public ResponseEntity<ProfileDTO> getMyProfile(@AuthenticationPrincipal User user) {
@@ -30,6 +33,11 @@ public class ProfileController {
     @GetMapping("/{userId}")
     public ResponseEntity<ProfileDTO> getProfile(@PathVariable Long userId) {
         return ResponseEntity.ok(profileService.getProfileByUserId(userId));
+    }
+
+    @GetMapping("/{userId}/stats")
+    public ResponseEntity<UserStatsDTO> getUserStats(@PathVariable Long userId) {
+        return ResponseEntity.ok(partyService.getUserStats(userId));
     }
 
     @PutMapping("/me")

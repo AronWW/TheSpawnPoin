@@ -39,12 +39,16 @@ export interface Party {
   maxMembers: number
   currentMembers: number
   isOpen: boolean
+  status: 'OPEN' | 'FULL' | 'IN_GAME' | 'COMPLETED' | 'CANCELLED'
+  title: string | null
   description: string | null
   eventTime: string | null
   platform: string[]
-  language: string | null
+  languages: string[]
   skillLevel: string | null
   playStyle: string | null
+  tags: string[] | null
+  region: string | null
   members: PartyMember[] | null
   chatId: number | null
   createdAt: string
@@ -52,12 +56,15 @@ export interface Party {
 
 export interface CreatePartyRequest {
   gameId: number | null
+  title: string
   description: string
   eventTime: string | null
   platform: string[]
-  language: string
-  skillLevel: string
+  languages: string[]
+  skillLevel: string | null
   playStyle: string | null
+  tags: string[]
+  region: string | null
   maxMembers: number
 }
 
@@ -106,7 +113,6 @@ export interface PartyFilters {
   platform: string
   skillLevel: string
   playStyle: string
-  language: string
   search: string
 }
 
@@ -154,6 +160,30 @@ export interface Profile {
   xbox: string | null
   playstation: string | null
   nintendo: string | null
+  bannerUrl: string | null
+  status: 'ONLINE' | 'IN_LOBBY' | 'IN_GAME' | 'OFFLINE'
+  lastSeen: string | null
+  createdAt: string
+}
+
+export interface ProfileComment {
+  id: number
+  profileUserId: number
+  authorId: number
+  authorDisplayName: string
+  authorAvatarUrl: string | null
+  content: string
+  createdAt: string
+}
+
+export interface UserStats {
+  completedGames: number
+  partiesCreated: number
+  partiesJoined: number
+  hoursPlayed: number
+  favoriteGameName: string | null
+  favoriteGameImageUrl: string | null
+  favoriteGameId: number | null
 }
 
 export interface ChatParticipant {
@@ -228,7 +258,7 @@ export interface AdminActiveParty {
   creatorDisplayName: string
   currentMembers: number
   maxMembers: number
-  language: string | null
+  languages: string[] | null
   createdAt: string
 }
 

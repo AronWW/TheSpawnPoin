@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @Builder
@@ -14,7 +15,7 @@ public class AdminActivePartyDTO {
     private String creatorDisplayName;
     private int currentMembers;
     private int maxMembers;
-    private String language;
+    private List<String> languages;
     private Instant createdAt;
 }
 

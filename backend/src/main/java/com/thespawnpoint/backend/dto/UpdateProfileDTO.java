@@ -52,4 +52,7 @@ public class UpdateProfileDTO {
 
     @Size(max = 200, message = "Nintendo friend code must not exceed 200 characters")
     private String nintendo;
+
+    @Size(max = 20, message = "Banner URL must not exceed 20 characters")
+    private String bannerUrl;
 }

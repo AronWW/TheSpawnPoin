@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useNotificationStore } from '../stores/notifications'
 import { useChatStore } from '../stores/chat'
@@ -11,6 +11,7 @@ import { notificationIcon, timeAgo } from '../utils/helpers'
 import { API_BASE_URL } from '../config'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const notifStore = useNotificationStore()
 const chatStore = useChatStore()
@@ -22,6 +23,7 @@ const isAdmin = computed(() => auth.user?.role === 'ADMIN')
 
 const notifOpen = ref(false)
 const userMenuOpen = ref(false)
+const mobileMenuOpen = ref(false)
 
 const avatarSrc = computed(() => {
   const url = auth.user?.avatarUrl
@@ -51,10 +53,22 @@ function handleClickOutside(e: MouseEvent) {
   const target = e.target as HTMLElement
   if (!target.closest('.notif-wrapper')) notifOpen.value = false
   if (!target.closest('.user-menu-wrapper')) userMenuOpen.value = false
+  if (!target.closest('.mobile-nav') && !target.closest('.nav-hamburger')) mobileMenuOpen.value = false
 }
 
-onMounted(() => {
+function toggleMobileMenu() {
+  mobileMenuOpen.value = !mobileMenuOpen.value
+  notifOpen.value = false
+  userMenuOpen.value = false
+}
+
+watch(() => route.path, () => {
+  mobileMenuOpen.value = false
+})
+
+onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
+  await auth.init()
   if (auth.isLoggedIn && !isAdmin.value) {
     notifStore.fetchUnreadCount()
     chatStore.fetchChats()
@@ -199,6 +213,7 @@ async function handleDeclineInvite(n: import('../types').Notification) {
           </router-link>
         </li>
       </ul>
+
 
       <div class="nav-right">
         <div v-if="auth.isLoggedIn" class="notif-wrapper">
@@ -360,7 +375,40 @@ async function handleDeclineInvite(n: import('../types').Notification) {
           </div>
         </template>
       </div>
+
+      <button class="nav-hamburger" @click.stop="toggleMobileMenu" :class="{ active: mobileMenuOpen }">
+        <span></span><span></span><span></span>
+      </button>
     </template>
+
+    <Transition name="mobile-slide">
+      <div v-if="mobileMenuOpen" class="mobile-nav">
+        <div class="mobile-nav-links">
+          <router-link to="/" class="mobile-nav-link">Головна</router-link>
+          <router-link to="/games" class="mobile-nav-link">Ігри</router-link>
+          <router-link to="/search-parties" class="mobile-nav-link">Пошук лобі</router-link>
+          <router-link v-if="auth.isLoggedIn" to="/friends" class="mobile-nav-link">
+            Друзі
+            <span v-if="friendStore.pendingCount > 0" class="mobile-badge">{{ friendStore.pendingCount }}</span>
+          </router-link>
+          <router-link to="/chat" class="mobile-nav-link">
+            Чат
+            <span v-if="auth.isLoggedIn && chatStore.totalUnread > 0" class="mobile-badge">{{ chatStore.totalUnread }}</span>
+          </router-link>
+        </div>
+        <div v-if="!auth.isLoggedIn" class="mobile-nav-auth">
+          <router-link to="/login" class="mobile-auth-btn">Увійти</router-link>
+          <router-link to="/register" class="mobile-auth-btn filled">Реєстрація</router-link>
+        </div>
+        <div v-else class="mobile-nav-user">
+          <router-link :to="profileLink" class="mobile-nav-link">👤 Мій профіль</router-link>
+          <router-link to="/favorite-games" class="mobile-nav-link">❤️ Улюблені ігри</router-link>
+          <router-link to="/settings" class="mobile-nav-link">⚙️ Налаштування</router-link>
+          <router-link to="/support" class="mobile-nav-link">💬 Підтримка</router-link>
+          <button class="mobile-nav-link mobile-logout" @click="handleLogout">🚪 Вийти</button>
+        </div>
+      </div>
+    </Transition>
   </nav>
 </template>
 
@@ -655,5 +703,186 @@ async function handleDeclineInvite(n: import('../types').Notification) {
   text-align: center;
   color: var(--gray);
   font-size: 13px;
+}
+
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 38px;
+  height: 38px;
+  background: none;
+  border: 2px solid var(--border);
+  padding: 8px 7px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s;
+}
+.nav-hamburger span {
+  display: block;
+  height: 2px;
+  background: var(--gray-light);
+  transition: transform 0.2s, opacity 0.2s, background 0.15s;
+}
+.nav-hamburger:hover {
+  border-color: var(--yellow-dim);
+}
+.nav-hamburger:hover span {
+  background: var(--yellow);
+}
+.nav-hamburger.active span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+  background: var(--yellow);
+}
+.nav-hamburger.active span:nth-child(2) {
+  opacity: 0;
+}
+.nav-hamburger.active span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+  background: var(--yellow);
+}
+
+.mobile-nav {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(10, 10, 11, 0.97);
+  border-bottom: 2px solid var(--border);
+  backdrop-filter: blur(12px);
+  padding: 16px 20px 20px;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 99;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+}
+
+.mobile-nav-links,
+.mobile-nav-user {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mobile-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gray-light);
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  background: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+.mobile-nav-link:hover,
+.mobile-nav-link.router-link-active {
+  color: var(--yellow);
+  border-color: var(--border);
+  background: rgba(245, 197, 24, 0.04);
+}
+.mobile-badge {
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 2px;
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+.mobile-nav-auth {
+  display: flex;
+  gap: 10px;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+}
+.mobile-auth-btn {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-display);
+  letter-spacing: 2px;
+  font-size: 14px;
+  padding: 10px 16px;
+  border: 2px solid var(--yellow);
+  background: transparent;
+  color: var(--yellow);
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.mobile-auth-btn:hover { background: var(--yellow); color: var(--black); }
+.mobile-auth-btn.filled { background: var(--yellow); color: var(--black); }
+.mobile-auth-btn.filled:hover { background: var(--yellow-dim); }
+
+.mobile-nav-user {
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  padding-top: 8px;
+}
+.mobile-logout {
+  color: var(--red);
+}
+.mobile-logout:hover {
+  background: rgba(192, 57, 43, 0.08);
+  border-color: var(--red-dim);
+}
+
+.mobile-slide-enter-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.mobile-slide-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.mobile-slide-enter-from,
+.mobile-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+@media (max-width: 768px) {
+  .nav-links {
+    display: none !important;
+  }
+  .nav-divider {
+    display: none;
+  }
+  .nav-hamburger {
+    display: flex;
+    margin-left: 12px;
+  }
+  .mobile-nav {
+    display: flex;
+  }
+  .nav-right {
+    margin-left: auto;
+  }
+  .nav-right .nav-auth-btn {
+    display: none;
+  }
+  .nav-user-info {
+    display: none;
+  }
+  .nav-user-chevron {
+    display: none;
+  }
+  .nav-user-btn {
+    padding: 3px;
+  }
+}
+@media (max-width: 480px) {
+  .nav-logo {
+    font-size: 20px;
+  }
 }
 </style>

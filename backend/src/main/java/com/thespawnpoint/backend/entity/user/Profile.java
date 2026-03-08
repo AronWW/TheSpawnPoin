@@ -77,4 +77,7 @@ public class Profile {
 
     @Column(name = "nintendo", length = 200)
     private String nintendo;
+
+    @Column(name = "banner_url", length = 20)
+    private String bannerUrl;
 }

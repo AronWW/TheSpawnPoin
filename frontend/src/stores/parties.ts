@@ -11,7 +11,6 @@ export const usePartyStore = defineStore('parties', () => {
   const filterGameId = ref<number | null>(null)
   const filterPlatform = ref('')
   const filterSkillLevel = ref('')
-  const filterLanguage = ref('')
   const sortBy = ref<SortOption>('newest')
 
   const searchParties = ref<Party[]>([])
@@ -24,13 +23,7 @@ export const usePartyStore = defineStore('parties', () => {
   async function fetchParties() {
     loading.value = true
     try {
-      const params: Record<string, string | number> = {}
-      if (filterGameId.value) params.gameId = filterGameId.value
-      if (filterPlatform.value) params.platform = filterPlatform.value
-      if (filterSkillLevel.value) params.skillLevel = filterSkillLevel.value
-      if (filterLanguage.value) params.language = filterLanguage.value
-
-      const { data } = await api.get<Party[]>('/parties', { params })
+      const { data } = await api.get<Party[]>('/parties')
       parties.value = data
     } catch {
       parties.value = []
@@ -47,7 +40,8 @@ export const usePartyStore = defineStore('parties', () => {
       result = result.filter(
           (p) =>
               p.gameName.toLowerCase().includes(q) ||
-              (p.description ?? '').toLowerCase().includes(q)
+              (p.description ?? '').toLowerCase().includes(q) ||
+              (p.title ?? '').toLowerCase().includes(q)
       )
     }
 
@@ -104,6 +98,7 @@ export const usePartyStore = defineStore('parties', () => {
       const idx = parties.value.findIndex((p) => p.id === partyId)
       const party = parties.value[idx]
       if (party) {
+        party.status = 'CANCELLED'
         party.isOpen = false
       }
       await fetchMyParties()
@@ -113,12 +108,42 @@ export const usePartyStore = defineStore('parties', () => {
     }
   }
 
+  async function startGame(partyId: number): Promise<Party> {
+    try {
+      const { data } = await api.post<Party>(`/parties/${partyId}/start`)
+      return data
+    } catch (e: any) {
+      const msg = e.response?.data?.message || 'Не вдалося почати гру'
+      throw new Error(msg)
+    }
+  }
+
+  async function completeParty(partyId: number): Promise<Party> {
+    try {
+      const { data } = await api.post<Party>(`/parties/${partyId}/complete`)
+      await fetchMyParties()
+      return data
+    } catch (e: any) {
+      const msg = e.response?.data?.message || 'Не вдалося завершити гру'
+      throw new Error(msg)
+    }
+  }
+
+  async function kickMember(partyId: number, userId: number): Promise<Party> {
+    try {
+      const { data } = await api.post<Party>(`/parties/${partyId}/kick/${userId}`)
+      return data
+    } catch (e: any) {
+      const msg = e.response?.data?.message || 'Не вдалося кікнути гравця'
+      throw new Error(msg)
+    }
+  }
+
   function resetFilters() {
     search.value = ''
     filterGameId.value = null
     filterPlatform.value = ''
     filterSkillLevel.value = ''
-    filterLanguage.value = ''
     sortBy.value = 'newest'
   }
 
@@ -130,7 +155,6 @@ export const usePartyStore = defineStore('parties', () => {
       if (filterGameId.value) params.gameId = filterGameId.value
       if (filterPlatform.value) params.platform = filterPlatform.value
       if (filterSkillLevel.value) params.skillLevel = filterSkillLevel.value
-      if (filterLanguage.value) params.language = filterLanguage.value
 
       const { data } = await api.get<Page<Party>>('/parties/search', { params })
       searchParties.value = data.content
@@ -156,6 +180,27 @@ export const usePartyStore = defineStore('parties', () => {
       myParties.value = []
     } finally {
       myPartiesLoading.value = false
+    }
+  }
+
+  const historyParties = ref<Party[]>([])
+  const historyLoading = ref(false)
+  const historyPage = ref(0)
+  const historyTotalPages = ref(0)
+
+  async function fetchHistory(page = 0) {
+    historyLoading.value = true
+    try {
+      const { data } = await api.get<Page<Party>>('/parties/history', {
+        params: { page, size: 10 },
+      })
+      historyParties.value = data.content
+      historyPage.value = data.page?.number ?? page
+      historyTotalPages.value = data.page?.totalPages ?? 0
+    } catch {
+      historyParties.value = []
+    } finally {
+      historyLoading.value = false
     }
   }
 
@@ -232,7 +277,6 @@ export const usePartyStore = defineStore('parties', () => {
     filterGameId,
     filterPlatform,
     filterSkillLevel,
-    filterLanguage,
     sortBy,
     filteredParties,
     fetchParties,
@@ -241,6 +285,9 @@ export const usePartyStore = defineStore('parties', () => {
     fetchParty,
     leaveParty,
     closeParty,
+    startGame,
+    completeParty,
+    kickMember,
     resetFilters,
     searchParties,
     searchLoading,
@@ -252,6 +299,11 @@ export const usePartyStore = defineStore('parties', () => {
     myParties,
     myPartiesLoading,
     fetchMyParties,
+    historyParties,
+    historyLoading,
+    historyPage,
+    historyTotalPages,
+    fetchHistory,
     incomingInvites,
     outgoingInvites,
     partyInvites,

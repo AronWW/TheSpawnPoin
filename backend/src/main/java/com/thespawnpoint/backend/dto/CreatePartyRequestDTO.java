@@ -12,17 +12,23 @@ public class CreatePartyRequestDTO {
     @NotNull(message = "Game ID is required")
     private Long gameId;
 
+    private String title;
+
     private String description;
 
     private Instant eventTime;
 
     private List<String> platform;
 
-    private String language;
+    private List<String> languages;
 
     private String skillLevel;
 
     private String playStyle;
+
+    private List<String> tags;
+
+    private String region;
 
     private Integer maxMembers;
 }

@@ -3,6 +3,7 @@ package com.thespawnpoint.backend.dto;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -28,4 +29,8 @@ public class ProfileDTO {
     private String xbox;
     private String playstation;
     private String nintendo;
+    private String bannerUrl;
+    private String status;
+    private Instant lastSeen;
+    private Instant createdAt;
 }
