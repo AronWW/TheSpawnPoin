@@ -211,6 +211,10 @@ export interface ChatItem {
   title: string | null
   partyId: number | null
   participants: ChatParticipant[] | null
+
+  archived: boolean
+  pinned: boolean
+  pinnedAt: string | null
 }
 
 export interface ChatMessage {
@@ -223,6 +227,35 @@ export interface ChatMessage {
   sentAt: string
   read: boolean
   system: boolean
+  deleted: boolean
+  edited: boolean
+  editedAt: string | null
+  replyToId: number | null
+  replyToContent: string | null
+  replyToSenderName: string | null
+  reactions: ReactionInfo[]
+}
+
+export interface ReactionInfo {
+  emoji: string
+  count: number
+  userEmails: string[]
+}
+
+export interface PinnedMessageInfo {
+  id: number
+  messageId: number
+  chatId: number
+  content: string
+  senderName: string
+  pinnedByName: string
+  pinnedAt: string
+}
+
+export interface ChatEvent {
+  type: string
+  chatId: number
+  payload: any
 }
 
 export interface AdminDashboard {

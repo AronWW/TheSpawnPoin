@@ -95,7 +95,7 @@ function goToParty() {
 
       <div v-if="heroParty" class="hero-card" @click="isMyParty ? goToParty() : undefined" :style="isMyParty ? 'cursor:pointer' : ''">
         <div class="party-card-accent"></div>
-        <div v-if="isMyParty" class="hero-card-label my-party-label">⚔️ МОЄ ЛОБІ</div>
+        <div v-if="isMyParty" class="hero-card-label my-party-label">⚔ МОЄ ЛОБІ</div>
         <div class="hero-card-header">
           <img
             v-if="heroParty.gameImageUrl"

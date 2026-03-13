@@ -17,42 +17,34 @@ onMounted(() => {
 
     <div v-if="admin.dashboard" class="stats-grid">
       <div class="stat-card" @click="router.push('/admin/users')">
-        <div class="stat-icon">👥</div>
         <div class="stat-value">{{ admin.dashboard.totalUsers }}</div>
         <div class="stat-label">Користувачів</div>
       </div>
       <div class="stat-card stat-card--danger" @click="router.push('/admin/users?tab=banned')">
-        <div class="stat-icon">🚫</div>
         <div class="stat-value">{{ admin.dashboard.bannedUsers }}</div>
         <div class="stat-label">Забанено</div>
       </div>
       <div class="stat-card" @click="router.push('/admin/games')">
-        <div class="stat-icon">🎮</div>
         <div class="stat-value">{{ admin.dashboard.totalGames }}</div>
         <div class="stat-label">Ігор</div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon">🎯</div>
         <div class="stat-value">{{ admin.dashboard.openParties }}</div>
         <div class="stat-label">Активних лобі</div>
       </div>
       <div class="stat-card stat-card--warn" @click="router.push('/admin/game-suggestions')">
-        <div class="stat-icon">💡</div>
         <div class="stat-value">{{ admin.dashboard.pendingSuggestions }}</div>
         <div class="stat-label">Заявок на ігри</div>
       </div>
       <div class="stat-card stat-card--danger" @click="router.push('/admin/reports')">
-        <div class="stat-icon">⚠️</div>
         <div class="stat-value">{{ admin.dashboard.openReports }}</div>
         <div class="stat-label">Відкритих скарг</div>
       </div>
       <div class="stat-card stat-card--warn" @click="router.push('/admin/tickets')">
-        <div class="stat-icon">📩</div>
         <div class="stat-value">{{ admin.dashboard.openTickets }}</div>
         <div class="stat-label">Відкритих тікетів</div>
       </div>
       <div class="stat-card stat-card--warn" @click="router.push('/admin/unban-requests')">
-        <div class="stat-icon">🔓</div>
         <div class="stat-value">{{ admin.dashboard.pendingUnbanRequests }}</div>
         <div class="stat-label">Запитів на розбан</div>
       </div>
@@ -92,7 +84,6 @@ onMounted(() => {
 .stat-card--danger { border-left: 3px solid var(--red); }
 .stat-card--warn { border-left: 3px solid var(--yellow); }
 
-.stat-icon { font-size: 1.8rem; margin-bottom: 8px; }
 .stat-value {
   font-family: var(--font-display);
   font-size: 2.2rem;

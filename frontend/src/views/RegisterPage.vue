@@ -57,7 +57,7 @@ async function handleRegister() {
       <div class="auth-side">
         <div class="auth-side-inner">
           <div class="auth-side-logo">THE<span>SPAWN</span>POINT</div>
-          <div class="auth-side-tagline">ПРИЄДНУЙСЯ ДО ЗАГОНУ</div>
+          <div class="auth-side-tagline">ПРИЄДНУЙСЯ ДО КОМАНДИ</div>
           <p class="auth-side-desc">
             Створи профіль гравця, знайди свою команду та починай грати
             з тими, хто розділяє твій стиль.

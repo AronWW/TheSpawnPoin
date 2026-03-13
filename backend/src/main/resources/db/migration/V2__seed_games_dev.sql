@@ -13,7 +13,6 @@ INSERT INTO games (name, genre, release_year, image_url, max_party_size) VALUES
                                                                              ('Rainbow Six Siege',         'Shooter',       2015, 'https://images.igdb.com/igdb/image/upload/t_cover_big/co8hkb.webp', 5),
                                                                              ('World of Warcraft',         'MMO',           2004, 'https://images.igdb.com/igdb/image/upload/t_cover_big/co9ial.webp', 5),
                                                                              ('Destiny 2',                 'Shooter',       2017, 'https://images.igdb.com/igdb/image/upload/t_cover_big/co6r0a.webp', 6),
-                                                                             ('Escape from Tarkov',        'Shooter',       2017, 'https://images.igdb.com/igdb/image/upload/t_cover_big/co7l58.webp', 5),
                                                                              ('PUBG: Battlegrounds',       'Battle Royale', 2017, 'https://images.igdb.com/igdb/image/upload/t_cover_big/co7mcl.webp', 4),
                                                                              ('Genshin Impact',            'RPG',           2020, 'https://images.igdb.com/igdb/image/upload/t_cover_big/co480q.webp', 4),
                                                                              ('Call of Duty: Warzone',     'Battle Royale', 2020, 'https://images.igdb.com/igdb/image/upload/t_cover_big/co8dq1.webp', 4),

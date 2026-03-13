@@ -5,7 +5,7 @@ import { useFriendStore } from '../stores/friends'
 import { useChatStore } from '../stores/chat'
 import { usePartyStore } from '../stores/parties'
 import { useStompClient } from './useStompClient'
-import type { Notification, ChatMessage } from '../types'
+import type { Notification, ChatMessage, ChatEvent } from '../types'
 
 
 export function useGlobalWebSocket() {
@@ -125,6 +125,15 @@ export function useGlobalWebSocket() {
         try {
           const payload = JSON.parse(frame.body)
           chatStore.onReadReceipt(payload)
+        } catch {  }
+      })
+    )
+
+    teardowns.push(
+      stomp.subscribe('/user/queue/chat-events', (frame) => {
+        try {
+          const event: ChatEvent = JSON.parse(frame.body)
+          chatStore.onChatEvent(event)
         } catch {  }
       })
     )

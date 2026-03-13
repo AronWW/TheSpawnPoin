@@ -3,21 +3,19 @@ package com.thespawnpoint.backend.entity.chat;
 import com.thespawnpoint.backend.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
 
 @Entity
-@Table(name = "chat_participants",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"chat_id", "user_id"}))
-@Getter
-@Setter
+@Table(name = "pinned_messages",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"chat_id", "message_id"}))
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ChatParticipant {
+public class PinnedMessage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,24 +28,16 @@ public class ChatParticipant {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "message_id", nullable = false)
+    private Message message;
 
-    @CreationTimestamp
-    @Column(name = "joined_at", nullable = false, updatable = false)
-    private Instant joinedAt;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "pinned_by", nullable = false)
+    private User pinnedBy;
 
-    @Column(nullable = false)
+    @Column(name = "pinned_at", nullable = false, updatable = false)
     @Builder.Default
-    private boolean archived = false;
-
-    @Column(nullable = false)
-    @Builder.Default
-    private boolean pinned = false;
-
-    @Column(name = "pinned_at")
-    private Instant pinnedAt;
-
-    @Column(name = "deleted_at")
-    private Instant deletedAt;
+    private Instant pinnedAt = Instant.now();
 }
+

@@ -3,7 +3,8 @@ import { ref, computed } from 'vue'
 import api from '../api/axios'
 import { useStompClient } from '../composables/useStompClient'
 import { useAuthStore } from './auth'
-import type { ChatItem, ChatMessage } from '../types'
+import { useToast } from '../composables/useToast'
+import type { ChatItem, ChatMessage, ChatEvent, PinnedMessageInfo, ReactionInfo } from '../types'
 
 export const useChatStore = defineStore('chat', () => {
   const chats = ref<ChatItem[]>([])
@@ -16,9 +17,37 @@ export const useChatStore = defineStore('chat', () => {
 
   const typingState = ref<Record<number, { name: string; timer: ReturnType<typeof setTimeout> | null }>>({})
 
+  const replyingTo = ref<ChatMessage | null>(null)
+  const editingMessage = ref<ChatMessage | null>(null)
+  const searchQuery = ref('')
+  const searchResults = ref<ChatMessage[]>([])
+  const searchLoading = ref(false)
+  const showArchived = ref(false)
+  const pinnedMessages = ref<PinnedMessageInfo[]>([])
+
   const totalUnread = computed(() =>
     chats.value.reduce((sum, c) => sum + c.unreadCount, 0)
   )
+
+  const sortedChats = computed(() => {
+    const list = [...chats.value]
+    list.sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1
+      if (!a.pinned && b.pinned) return 1
+      if (a.pinned && b.pinned) {
+        const pa = a.pinnedAt ? new Date(a.pinnedAt).getTime() : 0
+        const pb = b.pinnedAt ? new Date(b.pinnedAt).getTime() : 0
+        return pa - pb
+      }
+      const ta = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0
+      const tb = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0
+      return tb - ta
+    })
+    return list
+  })
+
+  const activeChats = computed(() => sortedChats.value.filter(c => !c.archived))
+  const archivedChats = computed(() => sortedChats.value.filter(c => c.archived))
 
   async function fetchChats() {
     loading.value = true
@@ -37,9 +66,14 @@ export const useChatStore = defineStore('chat', () => {
     messages.value = []
     page.value = 0
     hasMore.value = true
+    replyingTo.value = null
+    editingMessage.value = null
+    searchQuery.value = ''
+    searchResults.value = []
     await fetchMessages()
     const found = chats.value.find((c) => c.id === chat.id)
     if (found) found.unreadCount = 0
+    await fetchPinnedMessages(chat.id)
   }
 
   async function openGroupChatById(chatId: number) {
@@ -102,6 +136,120 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  function deleteMessage(messageId: number) {
+    const stomp = useStompClient()
+    stomp.publish('/app/chat.deleteMessage', { messageId })
+  }
+
+  function editMessageAction(messageId: number, newContent: string) {
+    const stomp = useStompClient()
+    stomp.publish('/app/chat.editMessage', { messageId, newContent })
+    editingMessage.value = null
+  }
+
+  function toggleReaction(messageId: number, emoji: string) {
+    const stomp = useStompClient()
+    stomp.publish('/app/chat.toggleReaction', { messageId, emoji })
+  }
+
+  function setReplyingTo(msg: ChatMessage | null) {
+    replyingTo.value = msg
+    editingMessage.value = null
+  }
+
+  function setEditingMessage(msg: ChatMessage | null) {
+    editingMessage.value = msg
+    replyingTo.value = null
+  }
+
+  async function archiveChat(chatId: number) {
+    try {
+      await api.post(`/chats/${chatId}/archive`)
+      const chat = chats.value.find(c => c.id === chatId)
+      if (chat) chat.archived = true
+      if (activeChat.value?.id === chatId) resetChat()
+    } catch {}
+  }
+
+  async function unarchiveChat(chatId: number) {
+    try {
+      await api.delete(`/chats/${chatId}/archive`)
+      const chat = chats.value.find(c => c.id === chatId)
+      if (chat) chat.archived = false
+    } catch {}
+  }
+
+  async function pinChatAction(chatId: number) {
+    try {
+      await api.post(`/chats/${chatId}/pin`)
+      const chat = chats.value.find(c => c.id === chatId)
+      if (chat) {
+        chat.pinned = true
+        chat.pinnedAt = new Date().toISOString()
+      }
+    } catch {}
+  }
+
+  async function unpinChatAction(chatId: number) {
+    try {
+      await api.delete(`/chats/${chatId}/pin`)
+      const chat = chats.value.find(c => c.id === chatId)
+      if (chat) {
+        chat.pinned = false
+        chat.pinnedAt = null
+      }
+    } catch {}
+  }
+
+  async function deleteChatAction(chatId: number) {
+    try {
+      await api.delete(`/chats/${chatId}`)
+      chats.value = chats.value.filter(c => c.id !== chatId)
+      if (activeChat.value?.id === chatId) resetChat()
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.response?.data?.error || 'Не вдалося видалити чат'
+      const toast = useToast()
+      toast.show(msg, 'error', 5000)
+    }
+  }
+
+  async function searchMessagesInChat(chatId: number, query: string) {
+    if (!query.trim()) {
+      searchResults.value = []
+      return
+    }
+    searchLoading.value = true
+    try {
+      const { data } = await api.get<ChatMessage[]>(`/chats/${chatId}/messages/search`, {
+        params: { q: query, page: 0, size: 50 }
+      })
+      searchResults.value = data
+    } catch {
+      searchResults.value = []
+    } finally {
+      searchLoading.value = false
+    }
+  }
+
+  function pinMessageAction(chatId: number, messageId: number) {
+    const stomp = useStompClient()
+    stomp.publish('/app/chat.pinMessage', { chatId, messageId })
+  }
+
+  function unpinMessageAction(chatId: number, messageId: number) {
+    const stomp = useStompClient()
+    stomp.publish('/app/chat.unpinMessage', { chatId, messageId })
+  }
+
+  async function fetchPinnedMessages(chatId: number) {
+    try {
+      const { data } = await api.get<PinnedMessageInfo[]>(`/chats/${chatId}/pinned-messages`)
+      pinnedMessages.value = data
+    } catch {
+      pinnedMessages.value = []
+    }
+  }
+
   function onIncomingMessage(msg: ChatMessage) {
     const stomp = useStompClient()
     const auth = useAuthStore()
@@ -144,6 +292,50 @@ export const useChatStore = defineStore('chat', () => {
       }
       return m
     })
+  }
+
+  function onChatEvent(event: ChatEvent) {
+    switch (event.type) {
+      case 'MESSAGE_DELETED': {
+        const { messageId } = event.payload
+        messages.value = messages.value.map(m =>
+          m.id === messageId
+            ? { ...m, deleted: true, content: 'Повідомлення видалено', reactions: [] }
+            : m
+        )
+        break
+      }
+      case 'MESSAGE_EDITED': {
+        const updated = event.payload as ChatMessage
+        messages.value = messages.value.map(m =>
+          m.id === updated.id ? { ...m, content: updated.content, edited: true, editedAt: updated.editedAt } : m
+        )
+        break
+      }
+      case 'REACTION_UPDATED': {
+        const { messageId, reactions } = event.payload as { messageId: number; reactions: ReactionInfo[] }
+        messages.value = messages.value.map(m =>
+          m.id === messageId ? { ...m, reactions } : m
+        )
+        break
+      }
+      case 'MESSAGE_PINNED': {
+        const pinned = event.payload as PinnedMessageInfo
+        pinnedMessages.value = [...pinnedMessages.value, pinned]
+        break
+      }
+      case 'MESSAGE_UNPINNED': {
+        const { messageId } = event.payload
+        pinnedMessages.value = pinnedMessages.value.filter(p => p.messageId !== messageId)
+        break
+      }
+      case 'CHAT_DELETED': {
+        const { chatId } = event.payload
+        chats.value = chats.value.filter(c => c.id !== chatId)
+        if (activeChat.value?.id === chatId) resetChat()
+        break
+      }
+    }
   }
 
   function updatePartnerStatus(email: string, status: string, lastSeen: string | null) {
@@ -201,6 +393,11 @@ export const useChatStore = defineStore('chat', () => {
     messages.value = []
     page.value = 0
     hasMore.value = true
+    replyingTo.value = null
+    editingMessage.value = null
+    searchQuery.value = ''
+    searchResults.value = []
+    pinnedMessages.value = []
   }
 
   return {
@@ -211,14 +408,39 @@ export const useChatStore = defineStore('chat', () => {
     loadingMessages,
     hasMore,
     totalUnread,
+    sortedChats,
+    activeChats,
+    archivedChats,
+    replyingTo,
+    editingMessage,
+    searchQuery,
+    searchResults,
+    searchLoading,
+    showArchived,
+    pinnedMessages,
     fetchChats,
     openChat,
     openGroupChatById,
     openDm,
     fetchMessages,
     loadOlder,
+    deleteMessage,
+    editMessageAction,
+    toggleReaction,
+    setReplyingTo,
+    setEditingMessage,
+    archiveChat,
+    unarchiveChat,
+    pinChatAction,
+    unpinChatAction,
+    deleteChatAction,
+    searchMessagesInChat,
+    pinMessageAction,
+    unpinMessageAction,
+    fetchPinnedMessages,
     onIncomingMessage,
     onReadReceipt,
+    onChatEvent,
     onPartnerTyping,
     isPartnerTyping,
     typingDisplayName,

@@ -47,5 +47,23 @@ public class Message {
     @Column(name = "is_system", nullable = false)
     @Builder.Default
     private boolean system = false;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean edited = false;
+
+    @Column(name = "edited_at")
+    private Instant editedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reply_to_id")
+    private Message replyTo;
 }
 

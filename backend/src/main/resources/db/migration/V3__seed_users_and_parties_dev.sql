@@ -48,7 +48,7 @@ DO $$
 
                 INSERT INTO party_requests (
                     creator_id, game_id, chat_id, max_members, is_open,
-                    description, platform, language, skill_level, play_style, created_at
+                    description, platform, skill_level, play_style, created_at
                 ) VALUES (
                              u_id,
                              g_id,
@@ -57,7 +57,6 @@ DO $$
                              TRUE,
                              'Тестова партія ' || i || ' із 40 — перевірка пагінації',
                              ARRAY[ plats[((i - 1) % 5) + 1] ]::VARCHAR(20)[],
-                             languages[((i - 1) % 5) + 1],
                              skill_levels[((i - 1) % 4) + 1],
                              play_styles[((i - 1) % 3) + 1],
                              NOW() - ((41 - i) * INTERVAL '30 minutes')

@@ -374,7 +374,6 @@ watch(() => route.params.userId, (newId) => {
               <span class="va-detail-val">{{ profile.fullName }}</span>
             </div>
             <div v-if="profile.country" class="va-detail-item">
-              <span class="va-detail-icon">📍</span>
               <span class="va-detail-val">{{ displayCountry }}</span>
             </div>
             <div v-if="profile.region" class="va-detail-item">
@@ -382,8 +381,8 @@ watch(() => route.params.userId, (newId) => {
             </div>
           </div>
           <div class="va-pills">
-            <span v-if="profile.playStyle" class="va-pill hl">⚡ {{ PLAY_STYLE_LABELS[profile.playStyle] ?? profile.playStyle }}</span>
-            <span v-if="profile.skillLevel" class="va-pill hl">🏆 {{ skillLabel(profile.skillLevel) }}</span>
+            <span v-if="profile.playStyle" class="va-pill hl"> {{ PLAY_STYLE_LABELS[profile.playStyle] ?? profile.playStyle }}</span>
+            <span v-if="profile.skillLevel" class="va-pill hl">{{ skillLabel(profile.skillLevel) }}</span>
             <span v-for="p in profile.platforms" :key="p" class="va-pill">{{ PLATFORM_LABELS[p] ?? p }}</span>
             <span v-if="profile.languages?.length" class="va-pill">{{ profile.languages.join(' · ') }}</span>
           </div>
@@ -455,7 +454,7 @@ watch(() => route.params.userId, (newId) => {
 
 
           <div v-if="favoriteGames.length" class="va-panel">
-            <div class="va-panel-title">УЛЮБЛЕНІ ІГРИ</div>
+            <div class="va-panel-title">ОБРАНІ ІГРИ</div>
             <div class="va-games">
               <div
                   v-for="game in displayedGames"

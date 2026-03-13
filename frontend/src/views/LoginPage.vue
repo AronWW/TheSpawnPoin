@@ -42,10 +42,10 @@ async function handleLogin() {
       <div class="auth-side">
         <div class="auth-side-inner">
           <div class="auth-side-logo">THE<span>SPAWN</span>POINT</div>
-          <div class="auth-side-tagline">ЗНАЙДИ СВІЙ ЗАГІН</div>
+          <div class="auth-side-tagline">ЗНАЙДИ СВОЮ КОМАНДУ</div>
           <p class="auth-side-desc">
             Платформа для гравців, які хочуть більше ніж просто грати.
-            Знаходь тімейтів, організовуй пати, грай на своєму рівні.
+            Знаходь тімейтів, організовуй лобі, грай на своєму рівні.
           </p>
           <div class="auth-side-art">⚔️</div>
         </div>

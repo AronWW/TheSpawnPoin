@@ -1,11 +1,6 @@
 package com.thespawnpoint.backend.controller;
 
-import com.thespawnpoint.backend.dto.ChatDTO;
-import com.thespawnpoint.backend.dto.CreateGroupChatDTO;
-import com.thespawnpoint.backend.dto.MessageDTO;
-import com.thespawnpoint.backend.dto.SendGroupMessageDTO;
-import com.thespawnpoint.backend.dto.SendMessageDTO;
-import com.thespawnpoint.backend.dto.TypingDTO;
+import com.thespawnpoint.backend.dto.*;
 import com.thespawnpoint.backend.entity.user.User;
 import com.thespawnpoint.backend.exception.ApiException;
 import com.thespawnpoint.backend.exception.WebSocketExceptionHandler;
@@ -43,7 +38,6 @@ public class ChatController extends WebSocketExceptionHandler {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
             @AuthenticationPrincipal User currentUser) {
-
         return ResponseEntity.ok(chatService.getHistory(currentUser, partnerEmail, page, size));
     }
 
@@ -51,32 +45,12 @@ public class ChatController extends WebSocketExceptionHandler {
     public ResponseEntity<Map<String, Long>> openDmChat(
             @PathVariable String partnerEmail,
             @AuthenticationPrincipal User currentUser) {
-
         User partner = userRepository.findByEmail(partnerEmail)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
-
         Long chatId = chatService.getOrCreateDmChat(currentUser, partner).getId();
         return ResponseEntity.ok(Map.of("chatId", chatId));
     }
 
-    @MessageMapping("/chat.send")
-    public void sendMessage(@Payload SendMessageDTO dto, Principal principal) {
-        User sender = getPrincipalUser(principal);
-        chatService.sendMessage(sender, dto.getRecipientEmail(), dto.getContent());
-        log.debug("Message from {} to {}", sender.getEmail(), dto.getRecipientEmail());
-    }
-
-    @MessageMapping("/chat.typing")
-    public void typing(@Payload TypingDTO dto, Principal principal) {
-        chatService.sendTypingIndicator(getPrincipalUser(principal), dto.getRecipientEmail());
-    }
-
-    @MessageMapping("/chat.read")
-    public void markRead(@Payload Map<String, String> payload, Principal principal) {
-        String senderEmail = payload.get("senderEmail");
-        if (senderEmail == null) return;
-        chatService.markAsReadAndNotify(getPrincipalUser(principal), senderEmail);
-    }
 
     @PostMapping("/api/chats/group")
     public ResponseEntity<ChatDTO> createGroupChat(
@@ -125,14 +99,89 @@ public class ChatController extends WebSocketExceptionHandler {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
             @AuthenticationPrincipal User currentUser) {
-
         return ResponseEntity.ok(chatService.getGroupHistory(currentUser, chatId, page, size));
+    }
+
+    @PostMapping("/api/chats/{chatId}/archive")
+    public ResponseEntity<Void> archiveChat(
+            @PathVariable Long chatId,
+            @AuthenticationPrincipal User currentUser) {
+        chatService.archiveChat(currentUser, chatId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/api/chats/{chatId}/archive")
+    public ResponseEntity<Void> unarchiveChat(
+            @PathVariable Long chatId,
+            @AuthenticationPrincipal User currentUser) {
+        chatService.unarchiveChat(currentUser, chatId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/api/chats/{chatId}/pin")
+    public ResponseEntity<Void> pinChat(
+            @PathVariable Long chatId,
+            @AuthenticationPrincipal User currentUser) {
+        chatService.pinChat(currentUser, chatId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/api/chats/{chatId}/pin")
+    public ResponseEntity<Void> unpinChat(
+            @PathVariable Long chatId,
+            @AuthenticationPrincipal User currentUser) {
+        chatService.unpinChat(currentUser, chatId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/api/chats/{chatId}")
+    public ResponseEntity<Void> deleteChat(
+            @PathVariable Long chatId,
+            @AuthenticationPrincipal User currentUser) {
+        chatService.deleteChatForUser(currentUser, chatId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/api/chats/{chatId}/messages/search")
+    public ResponseEntity<List<MessageDTO>> searchMessages(
+            @PathVariable Long chatId,
+            @RequestParam String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(chatService.searchMessages(currentUser, chatId, q, page, size));
+    }
+
+    @GetMapping("/api/chats/{chatId}/pinned-messages")
+    public ResponseEntity<List<PinnedMessageDTO>> getPinnedMessages(
+            @PathVariable Long chatId,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(chatService.getPinnedMessages(currentUser, chatId));
+    }
+
+    @MessageMapping("/chat.send")
+    public void sendMessage(@Payload SendMessageDTO dto, Principal principal) {
+        User sender = getPrincipalUser(principal);
+        chatService.sendMessage(sender, dto.getRecipientEmail(), dto.getContent(), dto.getReplyToId());
+        log.debug("Message from {} to {}", sender.getEmail(), dto.getRecipientEmail());
+    }
+
+    @MessageMapping("/chat.typing")
+    public void typing(@Payload TypingDTO dto, Principal principal) {
+        chatService.sendTypingIndicator(getPrincipalUser(principal), dto.getRecipientEmail());
+    }
+
+    @MessageMapping("/chat.read")
+    public void markRead(@Payload Map<String, String> payload, Principal principal) {
+        String senderEmail = payload.get("senderEmail");
+        if (senderEmail == null) return;
+        chatService.markAsReadAndNotify(getPrincipalUser(principal), senderEmail);
     }
 
     @MessageMapping("/chat.sendGroup")
     public void sendGroupMessage(@Payload SendGroupMessageDTO dto, Principal principal) {
         User sender = getPrincipalUser(principal);
-        chatService.sendGroupMessage(sender, dto.getChatId(), dto.getContent());
+        chatService.sendGroupMessage(sender, dto.getChatId(), dto.getContent(), dto.getReplyToId());
         log.debug("Group message from {} to chat {}", sender.getEmail(), dto.getChatId());
     }
 
@@ -146,6 +195,40 @@ public class ChatController extends WebSocketExceptionHandler {
     public void markGroupRead(@Payload Map<String, Object> payload, Principal principal) {
         Long chatId = ((Number) payload.get("chatId")).longValue();
         chatService.markGroupAsRead(getPrincipalUser(principal), chatId);
+    }
+
+    @MessageMapping("/chat.deleteMessage")
+    public void deleteMessage(@Payload Map<String, Object> payload, Principal principal) {
+        Long messageId = ((Number) payload.get("messageId")).longValue();
+        chatService.deleteMessage(getPrincipalUser(principal), messageId);
+    }
+
+    @MessageMapping("/chat.editMessage")
+    public void editMessage(@Payload Map<String, Object> payload, Principal principal) {
+        Long messageId = ((Number) payload.get("messageId")).longValue();
+        String newContent = (String) payload.get("newContent");
+        chatService.editMessage(getPrincipalUser(principal), messageId, newContent);
+    }
+
+    @MessageMapping("/chat.toggleReaction")
+    public void toggleReaction(@Payload Map<String, Object> payload, Principal principal) {
+        Long messageId = ((Number) payload.get("messageId")).longValue();
+        String emoji = (String) payload.get("emoji");
+        chatService.toggleReaction(getPrincipalUser(principal), messageId, emoji);
+    }
+
+    @MessageMapping("/chat.pinMessage")
+    public void pinMessage(@Payload Map<String, Object> payload, Principal principal) {
+        Long chatId = ((Number) payload.get("chatId")).longValue();
+        Long messageId = ((Number) payload.get("messageId")).longValue();
+        chatService.pinMessage(getPrincipalUser(principal), chatId, messageId);
+    }
+
+    @MessageMapping("/chat.unpinMessage")
+    public void unpinMessage(@Payload Map<String, Object> payload, Principal principal) {
+        Long chatId = ((Number) payload.get("chatId")).longValue();
+        Long messageId = ((Number) payload.get("messageId")).longValue();
+        chatService.unpinMessage(getPrincipalUser(principal), chatId, messageId);
     }
 
     private User getPrincipalUser(Principal principal) {
