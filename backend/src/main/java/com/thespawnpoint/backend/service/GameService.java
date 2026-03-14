@@ -1,14 +1,19 @@
 package com.thespawnpoint.backend.service;
 
+import com.thespawnpoint.backend.dto.ApproveSuggestionDTO;
 import com.thespawnpoint.backend.dto.GameDTO;
 import com.thespawnpoint.backend.dto.GameSuggestionDTO;
 import com.thespawnpoint.backend.dto.SuggestGameDTO;
-import com.thespawnpoint.backend.entity.*;
+import com.thespawnpoint.backend.entity.game.*;
+import com.thespawnpoint.backend.entity.social.NotificationType;
+import com.thespawnpoint.backend.entity.user.User;
 import com.thespawnpoint.backend.exception.ApiException;
 import com.thespawnpoint.backend.repository.GameRepository;
 import com.thespawnpoint.backend.repository.GameSuggestionRepository;
 import com.thespawnpoint.backend.repository.UserGameRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +28,7 @@ public class GameService {
     private final GameRepository gameRepository;
     private final UserGameRepository userGameRepository;
     private final GameSuggestionRepository gameSuggestionRepository;
+    private final NotificationService notificationService;
 
     public List<GameDTO> getAllGames() {
         return gameRepository.findAll().stream()
@@ -42,8 +48,15 @@ public class GameService {
         return toDTO(game);
     }
 
+    public Page<GameDTO> searchGamesPaged(String q, String genre, Pageable pageable) {
+        String queryParam = (q != null && !q.isBlank()) ? q : null;
+        String genreParam = (genre != null && !genre.isBlank()) ? genre : null;
+        return gameRepository.searchPaged(queryParam, genreParam, pageable)
+                .map(this::toDTO);
+    }
+
     public List<GameDTO> getUserGames(Long userId) {
-        return userGameRepository.findByIdUserId(userId).stream()
+        return userGameRepository.findByUserId(userId).stream()
                 .map(ug -> toDTO(ug.getGame()))
                 .toList();
     }
@@ -53,23 +66,22 @@ public class GameService {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Game not found"));
 
-        if (userGameRepository.existsByIdUserIdAndIdGameId(user.getId(), gameId)) {
+        if (userGameRepository.existsByUserIdAndGameId(user.getId(), gameId)) {
             throw new ApiException(HttpStatus.CONFLICT, "Game already added");
         }
 
-        UserGame userGame = new UserGame();
-        userGame.setId(new UserGameId(user.getId(), gameId));
-        userGame.setUser(user);
-        userGame.setGame(game);
-        userGameRepository.save(userGame);
+        userGameRepository.save(UserGame.builder()
+                .user(user)
+                .game(game)
+                .build());
     }
 
     @Transactional
     public void removeGameFromUser(User user, Long gameId) {
-        if (!userGameRepository.existsByIdUserIdAndIdGameId(user.getId(), gameId)) {
+        if (!userGameRepository.existsByUserIdAndGameId(user.getId(), gameId)) {
             throw new ApiException(HttpStatus.NOT_FOUND, "Game not in your list");
         }
-        userGameRepository.deleteByIdUserIdAndIdGameId(user.getId(), gameId);
+        userGameRepository.deleteByUserIdAndGameId(user.getId(), gameId);
     }
 
 
@@ -108,8 +120,23 @@ public class GameService {
                 .toList();
     }
 
+    public Page<GameSuggestionDTO> getSuggestionsPaged(String statusFilter, Pageable pageable) {
+        if (statusFilter != null && !statusFilter.isBlank()) {
+            SuggestionStatus status;
+            try {
+                status = SuggestionStatus.valueOf(statusFilter.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Невідомий статус: " + statusFilter);
+            }
+            return gameSuggestionRepository.findByStatusOrderByCreatedAtDesc(status, pageable)
+                    .map(this::toSuggestionDTO);
+        }
+        return gameSuggestionRepository.findAllByOrderByCreatedAtDesc(pageable)
+                .map(this::toSuggestionDTO);
+    }
+
     @Transactional
-    public GameDTO approveSuggestion(Long suggestionId) {
+    public GameDTO approveSuggestion(Long suggestionId, ApproveSuggestionDTO dto) {
         GameSuggestion suggestion = gameSuggestionRepository.findById(suggestionId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Suggestion not found"));
 
@@ -117,18 +144,31 @@ public class GameService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Suggestion already reviewed");
         }
 
+        String name = (dto != null && dto.getName() != null) ? dto.getName() : suggestion.getName();
+        String genre = (dto != null && dto.getGenre() != null) ? dto.getGenre() : suggestion.getGenre();
+        Short releaseYear = (dto != null && dto.getReleaseYear() != null) ? dto.getReleaseYear() : suggestion.getReleaseYear();
+        String imageUrl = (dto != null && dto.getImageUrl() != null) ? dto.getImageUrl() : suggestion.getImageUrl();
+        Integer maxPartySize = (dto != null && dto.getMaxPartySize() != null) ? dto.getMaxPartySize() : suggestion.getMaxPartySize();
+
         Game game = Game.builder()
-                .name(suggestion.getName())
-                .genre(suggestion.getGenre())
-                .releaseYear(suggestion.getReleaseYear())
-                .imageUrl(suggestion.getImageUrl())
-                .maxPartySize(suggestion.getMaxPartySize())
+                .name(name)
+                .genre(genre)
+                .releaseYear(releaseYear)
+                .imageUrl(imageUrl)
+                .maxPartySize(maxPartySize)
                 .build();
         gameRepository.save(game);
 
         suggestion.setStatus(SuggestionStatus.APPROVED);
         suggestion.setReviewedAt(Instant.now());
         gameSuggestionRepository.save(suggestion);
+
+        notificationService.send(
+                suggestion.getSuggestedBy(),
+                NotificationType.GAME_SUGGESTION_APPROVED,
+                "Вашу заявку на гру \"" + suggestion.getName() + "\" схвалено! Гра додана до каталогу.",
+                suggestion.getId()
+        );
 
         return toDTO(game);
     }
@@ -146,6 +186,17 @@ public class GameService {
         suggestion.setAdminComment(comment);
         suggestion.setReviewedAt(Instant.now());
         gameSuggestionRepository.save(suggestion);
+
+        String msg = "Вашу заявку на гру \"" + suggestion.getName() + "\" відхилено.";
+        if (comment != null && !comment.isBlank()) {
+            msg += " Причина: " + comment;
+        }
+        notificationService.send(
+                suggestion.getSuggestedBy(),
+                NotificationType.GAME_SUGGESTION_REJECTED,
+                msg,
+                suggestion.getId()
+        );
 
         return toSuggestionDTO(suggestion);
     }

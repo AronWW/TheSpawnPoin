@@ -3,10 +3,12 @@ package com.thespawnpoint.backend.controller;
 import com.thespawnpoint.backend.dto.GameDTO;
 import com.thespawnpoint.backend.dto.GameSuggestionDTO;
 import com.thespawnpoint.backend.dto.SuggestGameDTO;
-import com.thespawnpoint.backend.entity.User;
+import com.thespawnpoint.backend.entity.user.User;
 import com.thespawnpoint.backend.service.GameService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +29,15 @@ public class GameController {
                 ? gameService.searchGames(q)
                 : gameService.getAllGames();
         return ResponseEntity.ok(games);
+    }
+
+    @GetMapping("/games/search")
+    public ResponseEntity<Page<GameDTO>> searchGames(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String genre,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(gameService.searchGamesPaged(q, genre, PageRequest.of(page, size)));
     }
 
     @GetMapping("/games/{id}")
@@ -71,24 +82,6 @@ public class GameController {
     public ResponseEntity<List<GameSuggestionDTO>> mySuggestions(
             @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(gameService.getMySuggestions(user));
-    }
-
-    @GetMapping("/admin/game-suggestions")
-    public ResponseEntity<List<GameSuggestionDTO>> pendingSuggestions() {
-        return ResponseEntity.ok(gameService.getPendingSuggestions());
-    }
-
-    @PostMapping("/admin/game-suggestions/{id}/approve")
-    public ResponseEntity<GameDTO> approve(@PathVariable Long id) {
-        return ResponseEntity.ok(gameService.approveSuggestion(id));
-    }
-
-    @PostMapping("/admin/game-suggestions/{id}/reject")
-    public ResponseEntity<GameSuggestionDTO> reject(
-            @PathVariable Long id,
-            @RequestBody(required = false) Map<String, String> body) {
-        String comment = body != null ? body.get("comment") : null;
-        return ResponseEntity.ok(gameService.rejectSuggestion(id, comment));
     }
 }
 

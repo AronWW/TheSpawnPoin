@@ -1,0 +1,2 @@
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS banner_url VARCHAR(20);
+

@@ -13,4 +13,6 @@ public class SendMessageDTO {
     @NotBlank
     @Size(max = 5000)
     private String content;
+
+    private Long replyToId;
 }

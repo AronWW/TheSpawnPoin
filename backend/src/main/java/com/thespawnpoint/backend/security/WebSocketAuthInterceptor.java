@@ -48,8 +48,10 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                         }
                     });
                 }
+            } else if (accessor.getUser() == null) {
+                log.warn("WebSocket CONNECT rejected: invalid or missing token and no handshake auth");
             } else {
-                log.warn("WebSocket CONNECT rejected: invalid or missing token");
+                log.debug("WebSocket CONNECT: no STOMP token, using handshake auth for user {}", accessor.getUser().getName());
             }
         }
 

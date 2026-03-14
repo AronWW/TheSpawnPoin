@@ -38,7 +38,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
-                        .requestMatchers("/api/admin/**").authenticated() // TODO: restrict to ROLE_ADMIN in Stage 8
+                        .requestMatchers("/avatars/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/profile/{userId}").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/profile/{userId}/stats").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/profile/{userId}/comments").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 

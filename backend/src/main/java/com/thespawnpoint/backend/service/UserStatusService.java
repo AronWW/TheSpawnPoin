@@ -1,6 +1,6 @@
 package com.thespawnpoint.backend.service;
 
-import com.thespawnpoint.backend.entity.User;
+import com.thespawnpoint.backend.entity.user.User;
 import com.thespawnpoint.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Map;
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -43,11 +42,12 @@ public class UserStatusService {
     }
 
     private void broadcastStatus(String email, User.Status status, String lastSeen) {
-        messagingTemplate.convertAndSend("/topic/status", Optional.of(Map.of(
+        Object payload = Map.of(
                 "email", email,
                 "status", status.name(),
                 "lastSeen", lastSeen != null ? lastSeen : ""
-        )));
+        );
+        messagingTemplate.convertAndSend("/topic/status", payload);
     }
 }
 

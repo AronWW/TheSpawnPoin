@@ -1,0 +1,977 @@
+<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+import { usePartyStore } from '../stores/parties'
+import { useChatStore } from '../stores/chat'
+import { useStompClient } from '../composables/useStompClient'
+import InviteToPartyModal from '../components/InviteToPartyModal.vue'
+import type { Party } from '../types'
+import { skillLabel, timeAgo, gameEmoji } from '../utils/helpers'
+import { API_BASE_URL } from '../config'
+
+const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
+const partyStore = usePartyStore()
+const chatStore = useChatStore()
+const stomp = useStompClient()
+
+const party = ref<Party | null>(null)
+const loading = ref(false)
+const error = ref('')
+const actionLoading = ref(false)
+const actionError = ref('')
+const showInviteModal = ref(false)
+
+let unsubParty: (() => void) | null = null
+
+function subscribeToPartyUpdates(partyId: number) {
+  unsubscribeFromParty()
+  unsubParty = stomp.subscribe(`/topic/party/${partyId}`, (frame) => {
+    try {
+      const updated: Party = JSON.parse(frame.body)
+      party.value = updated
+    } catch { }
+  })
+}
+
+function unsubscribeFromParty() {
+  if (unsubParty) {
+    unsubParty()
+    unsubParty = null
+  }
+}
+
+function resolveAvatar(url: string | null): string {
+  if (!url) return API_BASE_URL + '/avatars/default/avatar-1.png'
+  if (url.startsWith('http')) return url
+  return API_BASE_URL + url
+}
+
+const isCreator = computed(() =>
+    auth.user && party.value && auth.user.id === party.value.creatorId
+)
+
+const isMember = computed(() => {
+  if (!auth.user || !party.value?.members) return false
+  return party.value.members.some((m) => m.userId === auth.user!.id)
+})
+
+const isActive = computed(() => {
+  if (!party.value) return false
+  return ['OPEN', 'FULL', 'IN_GAME'].includes(party.value.status)
+})
+
+const canJoin = computed(() =>
+    auth.isLoggedIn &&
+    party.value?.status === 'OPEN' &&
+    !isMember.value &&
+    party.value.currentMembers < party.value.maxMembers
+)
+
+const isFull = computed(() =>
+    party.value ? party.value.currentMembers >= party.value.maxMembers : false
+)
+
+const canInvite = computed(() =>
+    isMember.value && party.value?.status === 'OPEN' && !isFull.value
+)
+
+const canStart = computed(() =>
+    isCreator.value && (party.value?.status === 'OPEN' || party.value?.status === 'FULL')
+)
+
+const canComplete = computed(() =>
+    isCreator.value && party.value?.status === 'IN_GAME'
+)
+
+const partyMemberIds = computed(() =>
+    party.value?.members?.map((m) => m.userId) ?? []
+)
+
+const statusLabel = computed(() => {
+  if (!party.value) return ''
+  const map: Record<string, string> = {
+    OPEN: 'ВІДКРИТО',
+    FULL: 'ЗАПОВНЕНО',
+    IN_GAME: 'В ГРІ',
+    COMPLETED: 'ЗАВЕРШЕНО',
+    CANCELLED: 'СКАСОВАНО',
+  }
+  return map[party.value.status] ?? party.value.status
+})
+
+const statusClass = computed(() => {
+  if (!party.value) return ''
+  const map: Record<string, string> = {
+    OPEN: 'open',
+    FULL: 'full',
+    IN_GAME: 'in-game',
+    COMPLETED: 'completed',
+    CANCELLED: 'closed',
+  }
+  return map[party.value.status] ?? ''
+})
+
+async function loadParty() {
+  const id = route.params.id as string
+  loading.value = true
+  error.value = ''
+  try {
+    party.value = await partyStore.fetchParty(Number(id))
+    subscribeToPartyUpdates(Number(id))
+  } catch {
+    error.value = 'Не вдалося завантажити лобі'
+    party.value = null
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleJoin() {
+  if (!party.value) return
+  actionLoading.value = true
+  actionError.value = ''
+  try {
+    party.value = await partyStore.joinParty(party.value.id)
+  } catch (e: any) {
+    actionError.value = e.message || 'Помилка'
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function handleLeave() {
+  if (!party.value) return
+  actionLoading.value = true
+  actionError.value = ''
+  try {
+    await partyStore.leaveParty(party.value.id)
+    chatStore.fetchChats()
+    router.push('/search-parties')
+  } catch (e: any) {
+    actionError.value = e.message || 'Помилка'
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function handleClose() {
+  if (!party.value) return
+  actionLoading.value = true
+  actionError.value = ''
+  try {
+    await partyStore.closeParty(party.value.id)
+    await loadParty()
+  } catch (e: any) {
+    actionError.value = e.message || 'Помилка'
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function handleStartGame() {
+  if (!party.value) return
+  actionLoading.value = true
+  actionError.value = ''
+  try {
+    party.value = await partyStore.startGame(party.value.id)
+  } catch (e: any) {
+    actionError.value = e.message || 'Помилка'
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function handleComplete() {
+  if (!party.value) return
+  actionLoading.value = true
+  actionError.value = ''
+  try {
+    party.value = await partyStore.completeParty(party.value.id)
+  } catch (e: any) {
+    actionError.value = e.message || 'Помилка'
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function handleKick(userId: number) {
+  if (!party.value) return
+  actionLoading.value = true
+  actionError.value = ''
+  try {
+    party.value = await partyStore.kickMember(party.value.id, userId)
+  } catch (e: any) {
+    actionError.value = e.message || 'Помилка'
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+function goToChat() {
+  if (party.value?.chatId) {
+    router.push(`/chat?groupId=${party.value.chatId}`)
+  }
+}
+
+function playStyleLabel(style: string | null): string {
+  if (!style) return ''
+  const map: Record<string, string> = {
+    CASUAL: 'Casual',
+    SEMI_COMPETITIVE: 'Semi-competitive',
+    COMPETITIVE: 'Competitive',
+  }
+  return map[style] ?? style
+}
+
+function regionLabel(region: string | null): string {
+  if (!region) return ''
+  const map: Record<string, string> = {
+    EUROPE: '🌍 Європа',
+    NORTH_AMERICA: '🌎 Пн. Америка',
+    SOUTH_AMERICA: '🌎 Пд. Америка',
+    ASIA: '🌏 Азія',
+    MIDDLE_EAST: '🌍 Близький Схід',
+    AFRICA: '🌍 Африка',
+    OCEANIA: '🌏 Океанія',
+  }
+  return map[region] ?? region
+}
+
+onMounted(loadParty)
+
+onUnmounted(() => {
+  unsubscribeFromParty()
+})
+
+watch(() => route.params.id, () => {
+  unsubscribeFromParty()
+  loadParty()
+})
+</script>
+
+<template>
+  <div class="party-detail-page">
+    <div class="party-detail-container">
+      <div v-if="loading" class="empty-state">
+        <div class="empty-icon">⏳</div>
+        <p>Завантаження лобі...</p>
+      </div>
+
+      <div v-else-if="error" class="empty-state">
+        <div class="empty-icon">😕</div>
+        <h3>{{ error }}</h3>
+        <router-link to="/" class="action-btn">НА ГОЛОВНУ</router-link>
+      </div>
+
+      <div v-else-if="party" class="party-detail">
+        <button class="back-link" @click="router.back()">← Назад</button>
+
+        <div class="detail-header ink-panel">
+          <div class="detail-header-top">
+            <div class="detail-game-cover">
+              <img v-if="party.gameImageUrl" :src="party.gameImageUrl" :alt="party.gameName" />
+              <div v-else class="cover-placeholder">{{ gameEmoji(party.gameName) }}</div>
+            </div>
+            <div class="detail-header-info">
+              <h1 class="detail-game-name">{{ party.gameName }}</h1>
+              <div class="detail-host">
+                Хост:
+                <router-link :to="'/profile/' + party.creatorId" class="host-link">
+                  <img :src="resolveAvatar(party.creatorAvatarUrl)" :alt="party.creatorDisplayName" class="host-avatar" />
+                  {{ party.creatorDisplayName }}
+                </router-link>
+              </div>
+              <div class="detail-time">{{ timeAgo(party.createdAt) }}</div>
+            </div>
+            <div class="detail-status">
+              <span class="status-badge" :class="statusClass">
+                {{ statusLabel }}
+              </span>
+            </div>
+          </div>
+
+          <div v-if="party.title" class="detail-title">
+            <h2>{{ party.title }}</h2>
+          </div>
+
+          <div v-if="party.description" class="detail-description">
+            <p>{{ party.description }}</p>
+          </div>
+
+          <div class="detail-tags">
+            <span v-for="p in party.platform" :key="p" class="platform-tag">{{ p }}</span>
+            <span v-for="lang in (party.languages || [])" :key="lang" class="tag">{{ lang }}</span>
+            <span v-if="party.region" class="tag tag-region">{{ regionLabel(party.region) }}</span>
+            <span v-if="party.skillLevel" class="skill-badge" :class="party.skillLevel.toLowerCase()">
+              {{ skillLabel(party.skillLevel) }}
+            </span>
+            <span v-if="party.playStyle" class="tag">{{ playStyleLabel(party.playStyle) }}</span>
+            <span v-for="tag in (party.tags || [])" :key="tag" class="tag tag-custom">{{ tag }}</span>
+          </div>
+        </div>
+
+        <div class="detail-section ink-panel">
+          <h2 class="section-label">
+            ГРАВЦІ
+            <span class="member-count">
+              <span>{{ party.currentMembers }}</span>/{{ party.maxMembers }}
+            </span>
+          </h2>
+
+          <div class="slots-visual">
+            <div v-for="i in party.maxMembers" :key="i" class="member-slot" :class="{ filled: i <= party.currentMembers }">
+              <template v-if="i <= party.currentMembers && party.members?.[i - 1]">
+                <router-link :to="'/profile/' + (party.members?.[i - 1]?.userId ?? '')" class="member-card">
+                  <img :src="resolveAvatar(party.members?.[i - 1]?.avatarUrl ?? null)" :alt="party.members?.[i - 1]?.displayName ?? 'Member'" class="member-avatar" />
+                  <div class="member-info">
+                    <span class="member-name">{{ party.members?.[i - 1]?.displayName ?? 'Member' }}</span>
+                    <span v-if="party.members?.[i - 1]?.isCreator" class="creator-tag">ХОСТ</span>
+                  </div>
+                </router-link>
+                <button
+                    v-if="isCreator && isActive && !party.members?.[i - 1]?.isCreator"
+                    class="kick-btn"
+                    :disabled="actionLoading"
+                    @click="handleKick(party.members?.[i - 1]?.userId ?? 0)"
+                    title="Кікнути гравця"
+                >✕</button>
+              </template>
+              <template v-else>
+                <div class="empty-slot-content">
+                  <span class="empty-slot-icon">+</span>
+                  <span class="empty-slot-text">Вільне місце</span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="actionError" class="action-error">
+          {{ actionError }}
+        </div>
+
+        <div class="detail-actions ink-panel">
+          <div class="actions-row actions-primary">
+            <button
+                v-if="canJoin"
+                class="action-btn primary"
+                :disabled="actionLoading"
+                @click="handleJoin"
+            >
+              <span class="action-icon">⚡</span>
+              {{ actionLoading ? 'ПРИЄДНАННЯ...' : 'ПРИЄДНАТИСЯ' }}
+            </button>
+
+            <div v-else-if="!isMember && party.status === 'FULL'" class="status-info">
+              <span class="status-info-icon">🔒</span> Лобі заповнене
+            </div>
+
+            <div v-else-if="!isMember && party.status === 'IN_GAME'" class="status-info">
+              <span class="status-info-icon">🎮</span> Гра вже йде
+            </div>
+
+            <div v-else-if="!isMember && (party.status === 'COMPLETED' || party.status === 'CANCELLED')" class="status-info">
+              <span class="status-info-icon">{{ party.status === 'COMPLETED' ? '✅' : '❌' }}</span>
+              {{ party.status === 'COMPLETED' ? 'Гру завершено' : 'Лобі скасовано' }}
+            </div>
+
+            <router-link v-else-if="!auth.isLoggedIn && party.status === 'OPEN'" to="/login" class="action-btn primary">
+              <span class="action-icon">🔑</span> УВІЙТИ ДЛЯ ПРИЄДНАННЯ
+            </router-link>
+
+            <button
+                v-if="canStart"
+                class="action-btn start"
+                :disabled="actionLoading"
+                @click="handleStartGame"
+            >
+              <span class="action-icon">▶</span>
+              {{ actionLoading ? '...' : 'ПОЧАТИ ГРУ' }}
+            </button>
+
+            <button
+                v-if="canComplete"
+                class="action-btn complete"
+                :disabled="actionLoading"
+                @click="handleComplete"
+            >
+              <span class="action-icon">✓</span>
+              {{ actionLoading ? '...' : 'ЗАВЕРШИТИ ГРУ' }}
+            </button>
+          </div>
+
+          <div v-if="isMember && isActive" class="actions-row actions-secondary">
+            <button
+                v-if="party.chatId"
+                class="action-btn ghost"
+                @click="goToChat"
+            >
+              <span class="action-icon">💬</span> ЧАТ
+            </button>
+
+            <button
+                v-if="canInvite"
+                class="action-btn ghost"
+                @click="showInviteModal = true"
+            >
+              <span class="action-icon">✉️</span> ЗАПРОСИТИ
+            </button>
+
+            <button
+                v-if="isCreator"
+                class="action-btn danger-ghost"
+                :disabled="actionLoading"
+                @click="handleClose"
+            >
+              {{ actionLoading ? '...' : 'ЗАКРИТИ' }}
+            </button>
+
+            <button
+                v-if="!isCreator"
+                class="action-btn danger-ghost"
+                :disabled="actionLoading"
+                @click="handleLeave"
+            >
+              {{ actionLoading ? '...' : 'ПОКИНУТИ' }}
+            </button>
+          </div>
+
+          <div v-if="!isActive && isMember && party.chatId" class="actions-row">
+            <button class="action-btn ghost" @click="goToChat">
+              <span class="action-icon">💬</span> ПЕРЕГЛЯНУТИ ЧАТ
+            </button>
+          </div>
+        </div>
+
+        <InviteToPartyModal
+            v-if="party"
+            :visible="showInviteModal"
+            :party-id="party.id"
+            :party-members="partyMemberIds"
+            @close="showInviteModal = false"
+        />
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.party-detail-page {
+  padding-top: 64px;
+  min-height: 100vh;
+  background: var(--black);
+}
+
+.party-detail-container {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.party-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.back-link {
+  background: none;
+  border: none;
+  color: var(--gray);
+  font-family: var(--font-body);
+  font-size: 13px;
+  letter-spacing: 1px;
+  padding: 4px 0;
+  transition: color 0.15s;
+  align-self: flex-start;
+}
+.back-link:hover {
+  color: var(--yellow);
+}
+
+.detail-header {
+  padding: 28px;
+}
+
+.detail-header-top {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.detail-game-cover img {
+  width: 70px;
+  height: 94px;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+.cover-placeholder {
+  width: 70px;
+  height: 94px;
+  background: var(--panel-light);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.detail-header-info {
+  flex: 1;
+}
+
+.detail-game-name {
+  font-family: var(--font-display);
+  font-size: 32px;
+  letter-spacing: 2px;
+  color: var(--yellow);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.detail-host {
+  font-size: 13px;
+  color: var(--gray);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.host-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gray-light);
+  transition: color 0.15s;
+}
+.host-link:hover {
+  color: var(--yellow);
+}
+
+.host-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--yellow-dim);
+}
+
+.detail-time {
+  font-size: 11px;
+  color: var(--gray);
+}
+
+.detail-status {
+  flex-shrink: 0;
+}
+
+.status-badge {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 2px;
+  padding: 5px 14px;
+  border: 2px solid;
+}
+.status-badge.open {
+  border-color: #27ae60;
+  color: #2ecc71;
+  background: rgba(39, 174, 96, 0.1);
+}
+.status-badge.full {
+  border-color: rgba(245, 197, 24, 0.5);
+  color: var(--yellow);
+  background: rgba(245, 197, 24, 0.1);
+}
+.status-badge.in-game {
+  border-color: rgba(52, 152, 219, 0.5);
+  color: #3498db;
+  background: rgba(52, 152, 219, 0.1);
+}
+.status-badge.completed {
+  border-color: rgba(149, 165, 166, 0.5);
+  color: #95a5a6;
+  background: rgba(149, 165, 166, 0.1);
+}
+.status-badge.closed {
+  border-color: var(--red-dim);
+  color: var(--red);
+  background: rgba(192, 57, 43, 0.1);
+}
+
+.detail-description {
+  margin-bottom: 16px;
+}
+.detail-description p {
+  color: var(--gray-light);
+  font-size: 15px;
+  line-height: 1.6;
+  font-style: italic;
+  white-space: pre-wrap;
+}
+
+.detail-title {
+  margin-bottom: 8px;
+}
+.detail-title h2 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 1px;
+  color: var(--white);
+}
+
+.tag-custom {
+  background: rgba(245, 197, 24, 0.06);
+  border-color: var(--yellow-dim);
+  color: var(--yellow-dim);
+}
+
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.tag {
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 3px 10px;
+  background: var(--panel-light);
+  border: 1px solid var(--border);
+  color: var(--gray-light);
+}
+
+.detail-section {
+  padding: 24px 28px;
+}
+
+.section-label {
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 3px;
+  color: var(--yellow);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.member-count {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--gray);
+  letter-spacing: 1px;
+}
+.member-count span {
+  color: var(--yellow);
+  font-weight: 700;
+}
+
+.slots-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.member-slot {
+  border: 2px solid var(--border);
+  background: var(--panel-light);
+  padding: 12px 16px;
+  transition: border-color 0.15s;
+}
+.member-slot.filled {
+  border-color: rgba(245, 197, 24, 0.2);
+  background: rgba(245, 197, 24, 0.03);
+}
+
+.member-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: opacity 0.15s;
+}
+.member-card:hover {
+  opacity: 0.8;
+}
+
+.member-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+}
+.member-slot.filled .member-avatar {
+  border-color: var(--yellow-dim);
+}
+
+.member-slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kick-btn {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--red-dim);
+  color: var(--red);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.kick-btn:hover:not(:disabled) {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+}
+.kick-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.member-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-name {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--white);
+  letter-spacing: 0.5px;
+}
+
+.creator-tag {
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 2px;
+  padding: 2px 8px;
+  background: rgba(245, 197, 24, 0.12);
+  border: 1px solid var(--yellow-dim);
+  color: var(--yellow);
+}
+
+.empty-slot-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--gray);
+}
+
+.empty-slot-icon {
+  width: 36px;
+  height: 36px;
+  border: 2px dashed var(--border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--gray);
+}
+
+.empty-slot-text {
+  font-size: 13px;
+  font-style: italic;
+  letter-spacing: 0.5px;
+}
+
+.action-error {
+  color: var(--red);
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-align: center;
+  padding: 8px;
+  background: rgba(192, 57, 43, 0.08);
+  border: 1px solid var(--red-dim);
+}
+
+.detail-actions {
+  padding: 20px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.action-btn {
+  font-family: var(--font-display);
+  letter-spacing: 2px;
+  font-size: 13px;
+  padding: 10px 24px;
+  border: 2px solid transparent;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.action-icon {
+  font-size: 14px;
+}
+
+/* Primary — yellow filled */
+.action-btn.primary {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: var(--black);
+}
+.action-btn.primary:hover:not(:disabled) {
+  background: transparent;
+  color: var(--yellow);
+}
+
+/* Start Game — blue */
+.action-btn.start {
+  background: rgba(52, 152, 219, 0.15);
+  border-color: #3498db;
+  color: #3498db;
+}
+.action-btn.start:hover:not(:disabled) {
+  background: #3498db;
+  color: #fff;
+}
+
+/* Complete — green */
+.action-btn.complete {
+  background: rgba(39, 174, 96, 0.15);
+  border-color: #27ae60;
+  color: #2ecc71;
+}
+.action-btn.complete:hover:not(:disabled) {
+  background: #27ae60;
+  color: #fff;
+}
+
+/* Ghost — outlined yellow */
+.action-btn.ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--gray-light);
+}
+.action-btn.ghost:hover {
+  border-color: var(--yellow-dim);
+  color: var(--yellow);
+}
+
+/* Danger ghost — outlined red */
+.action-btn.danger-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--gray);
+}
+.action-btn.danger-ghost:hover:not(:disabled) {
+  border-color: var(--red-dim);
+  color: var(--red);
+}
+
+.action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.status-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--gray);
+  padding: 10px 20px;
+  border: 2px dashed var(--border);
+  text-transform: uppercase;
+}
+.status-info-icon {
+  font-size: 16px;
+}
+
+.tag-region {
+  background: rgba(52, 152, 219, 0.08);
+  border-color: rgba(52, 152, 219, 0.3);
+  color: #5dade2;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-state h3 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  letter-spacing: 2px;
+  color: var(--yellow);
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  color: var(--gray);
+  font-size: 14px;
+}
+
+.action-btn {
+  font-family: var(--font-display);
+  letter-spacing: 2px;
+  font-size: 15px;
+  padding: 10px 28px;
+  border: 2px solid var(--yellow);
+  background: var(--yellow);
+  color: var(--black);
+  text-transform: uppercase;
+  transition: background 0.15s;
+  display: inline-block;
+  margin-top: 16px;
+}
+.action-btn:hover {
+  background: var(--yellow-dim);
+}
+
+@media (max-width: 600px) {
+  .detail-header-top {
+    flex-direction: column;
+  }
+  .actions-row {
+    flex-direction: column;
+  }
+  .action-btn,
+  .status-info {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+}
+</style>

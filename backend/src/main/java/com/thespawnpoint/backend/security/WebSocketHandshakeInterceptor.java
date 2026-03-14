@@ -48,9 +48,9 @@ public class WebSocketHandshakeInterceptor implements HandshakeInterceptor {
             }
         }
 
+        // Always allow handshake — STOMP-level auth interceptor will authenticate on CONNECT
         if (!attributes.containsKey("email")) {
-            log.warn("WebSocket handshake rejected: unauthenticated");
-            return false;
+            log.debug("WebSocket handshake: no cookie auth, will rely on STOMP CONNECT auth");
         }
 
         return true;

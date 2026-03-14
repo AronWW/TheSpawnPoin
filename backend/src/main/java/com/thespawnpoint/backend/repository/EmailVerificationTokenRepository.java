@@ -1,7 +1,7 @@
 package com.thespawnpoint.backend.repository;
 
-import com.thespawnpoint.backend.entity.EmailVerificationToken;
-import com.thespawnpoint.backend.entity.User;
+import com.thespawnpoint.backend.entity.auth.EmailVerificationToken;
+import com.thespawnpoint.backend.entity.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
