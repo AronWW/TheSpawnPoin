@@ -30,6 +30,8 @@ const blockStore = useBlockStore()
 const laughTaleQuest = useLaughTaleQuestStore()
 
 const ROAD_ONE_CLICKS = 5
+const INITIAL_COMMENTS_LIMIT = 6
+const COMMENTS_LOAD_MORE_STEP = 10
 
 const BANNER_PRESETS: Record<string, string> = {
   'banner-1': 'linear-gradient(135deg, #1a0a2e 0%, #3d1a78 50%, #1a0a2e 100%)',
@@ -348,7 +350,8 @@ const memberSince = computed(() => {
 
 const comments = ref<ProfileComment[]>([])
 const commentsLoading = ref(false)
-const commentsPage = ref(0)
+const commentsVisibleLimit = ref(INITIAL_COMMENTS_LIMIT)
+const commentsTotal = ref(0)
 const commentsHasMore = ref(true)
 const newComment = ref('')
 const postingComment = ref(false)
@@ -356,23 +359,21 @@ const postingComment = ref(false)
 async function fetchComments(reset = false) {
   if (!profile.value) return
   if (reset) {
-    commentsPage.value = 0
+    commentsVisibleLimit.value = INITIAL_COMMENTS_LIMIT
     commentsHasMore.value = true
+    commentsTotal.value = 0
     comments.value = []
   }
   commentsLoading.value = true
   try {
     const { data } = await api.get(`/profile/${profile.value.userId}/comments`, {
-      params: { page: commentsPage.value, size: 6 }
+      params: { page: 0, size: commentsVisibleLimit.value }
     })
     const page = data as any
     const content: ProfileComment[] = page.content
-    if (reset) {
-      comments.value = content
-    } else {
-      comments.value.push(...content)
-    }
-    commentsHasMore.value = !page.last
+    comments.value = content
+    commentsTotal.value = page.totalElements ?? content.length
+    commentsHasMore.value = comments.value.length < commentsTotal.value
   } catch { }
   finally { commentsLoading.value = false }
 }
@@ -384,7 +385,9 @@ async function postComment() {
     const { data } = await api.post<ProfileComment>(`/profile/${profile.value.userId}/comments`, {
       content: newComment.value.trim()
     })
-    comments.value.unshift(data)
+    commentsTotal.value++
+    comments.value = [data, ...comments.value].slice(0, commentsVisibleLimit.value)
+    commentsHasMore.value = comments.value.length < commentsTotal.value
     newComment.value = ''
   } catch { }
   finally { postingComment.value = false }
@@ -394,12 +397,12 @@ async function deleteComment(commentId: number) {
   if (!profile.value) return
   try {
     await api.delete(`/profile/${profile.value.userId}/comments/${commentId}`)
-    comments.value = comments.value.filter(c => c.id !== commentId)
+    await fetchComments()
   } catch { }
 }
 
 function loadMoreComments() {
-  commentsPage.value++
+  commentsVisibleLimit.value += COMMENTS_LOAD_MORE_STEP
   fetchComments()
 }
 
@@ -840,7 +843,7 @@ watch(canSearchForFirstPoneglyph, (canSearch) => {
           <div class="va-panel comments-panel">
             <div class="va-panel-title">
               КОМЕНТАРІ
-              <span class="comments-count">{{ comments.length }}</span>
+              <span class="comments-count">{{ commentsTotal }}</span>
             </div>
 
             <div v-if="auth.isLoggedIn && canComment" class="comment-form">

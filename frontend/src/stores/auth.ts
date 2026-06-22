@@ -30,13 +30,6 @@ export const useAuthStore = defineStore('auth', () => {
     myProfile.value = null
   }
 
-  function hasRefreshHintCookie(): boolean {
-    if (typeof document === 'undefined') return false
-    return document.cookie
-      .split(';')
-      .some((part) => part.trim().startsWith('has_refresh_token=1'))
-  }
-
   function clearRefreshHintCookie() {
     if (typeof document === 'undefined') return
     document.cookie = 'has_refresh_token=; Max-Age=0; Path=/'
@@ -66,11 +59,6 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (currentUser) {
         return currentUser
-      }
-
-      if (!hasRefreshHintCookie()) {
-        clearAuthState()
-        return null
       }
 
       try {
