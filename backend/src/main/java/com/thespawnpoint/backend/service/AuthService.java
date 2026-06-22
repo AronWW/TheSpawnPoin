@@ -205,14 +205,7 @@ public class AuthService {
             } catch (Exception ignored) {}
         });
 
-        return Map.of(
-                "message", "Email successfully confirmed",
-                "id", user.getId(),
-                "email", user.getEmail(),
-                "displayName", user.getDisplayName(),
-                "role", user.getRole().name(),
-                "status", user.getStatus().name()
-        );
+        return buildAuthResponse(user, "Email successfully confirmed");
     }
 
     // ЛОГІН
@@ -233,17 +226,7 @@ public class AuthService {
 
         setAuthCookies(response, user.getEmail(), dto.isRememberMe());
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("message", "Successful login");
-        body.put("id", user.getId());
-        body.put("email", user.getEmail());
-        body.put("displayName", user.getDisplayName());
-        body.put("role", user.getRole().name());
-        body.put("status", user.getStatus().name());
-        body.put("banned", user.isBanned());
-        body.put("banReason", user.getBanReason());
-
-        return body;
+        return buildAuthResponse(user, "Successful login");
     }
 
     // REFRESH ТОКЕНУ
@@ -363,6 +346,26 @@ public class AuthService {
         long refreshMs = rememberMe ? JwtUtil.REMEMBER_ME_MS : refreshTokenExpirationMs;
         setRefreshTokenCookie(response, jwtUtil.generateRefreshToken(email, rememberMe), refreshMs);
         setRefreshHintCookie(response, refreshMs);
+    }
+
+    private Map<String, Object> buildAuthResponse(User user, String message) {
+        String avatarUrl = profileRepository.findByUserId(user.getId())
+                .map(Profile::getAvatarUrl)
+                .orElse(null);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("message", message);
+        body.put("id", user.getId());
+        body.put("email", user.getEmail());
+        body.put("displayName", user.getDisplayName());
+        body.put("emailVerified", user.isEmailVerified());
+        body.put("role", user.getRole().name());
+        body.put("status", user.getStatus().name());
+        body.put("lastSeen", user.getLastSeen() != null ? user.getLastSeen().toString() : null);
+        body.put("avatarUrl", avatarUrl);
+        body.put("banned", user.isBanned());
+        body.put("banReason", user.getBanReason());
+        return body;
     }
 
     private void setAccessTokenCookie(HttpServletResponse response, String token) {
